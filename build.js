@@ -20,7 +20,7 @@ import { join } from "node:path";
 // SITE_URL is the canonical home (custom domain on Cloudflare). Override via env
 // (e.g. SITE_URL=https://... node build.js) for staging/preview builds.
 const SITE_URL   = (process.env.SITE_URL || "https://jomi-se.com").replace(/\/$/, "");
-const SITE_TITLE = process.env.SITE_TITLE || "jomi.se — engineering notes";
+const SITE_TITLE = process.env.SITE_TITLE || "jomi-se — engineering notes";
 const SITE_DESC  = process.env.SITE_DESC  || "Technical writing by an engineer, in the open.";
 const AUTHOR     = process.env.SITE_AUTHOR || "José";
 
