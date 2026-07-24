@@ -92,6 +92,16 @@ Rules that follow from this:
 - **Zero runtime dependencies** by design — `build.js` uses only the Node stdlib, so
   Cloudflare needs no install step and the author owns every line.
 
+## Design system upkeep (keep upstream in sync)
+
+The design system (`styles/tokens.css`, `styles/base.css`, `styles/DESIGN.md`,
+`styles/preview.html`) is mirrored to the author's Claude Design project on
+claude.ai/design. **When you commit changes to any of these files, also push the
+changed files to that project** (Claude Code: the DesignSync tool; same paths,
+plus the `previews/*` cards when their content is affected). The project id and
+sync details live in `AGENTS.local.md`. If you cannot sync (no access from your
+harness), say so explicitly so the author knows the mirror is stale.
+
 ## Deploy & the build budget (be push-frugal)
 
 Hosting is Cloudflare Workers static assets (Git-integrated builds): every push to

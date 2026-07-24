@@ -99,13 +99,16 @@ function page(title, bodyHtml, { description = SITE_DESC } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escHtml(title)}</title>
 <meta name="description" content="${escHtml(description)}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="${escHtml(SITE_TITLE)}" href="/feed.xml">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/base.css">
 </head>
 <body>
 <header class="site-header">
-  <a class="site-title" href="/">${escHtml(SITE_TITLE)}</a>
+  <a class="site-title" href="/"><svg class="site-mark" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>${escHtml(SITE_TITLE)}</a>
   <nav><a href="/archive/">Archive</a> <a href="/feed.xml">RSS</a></nav>
 </header>
 <main>
@@ -140,7 +143,7 @@ function build() {
   mkdirSync(OUT_DIR, { recursive: true });
   if (existsSync(POSTS_DIR)) cpSync(POSTS_DIR, join(OUT_DIR, "posts"), { recursive: true });
   if (existsSync("styles")) cpSync("styles", join(OUT_DIR, "styles"), { recursive: true });
-  for (const asset of ["favicon.ico", "favicon.svg", "robots.txt", "CNAME", ".well-known"]) {
+  for (const asset of ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "robots.txt", "CNAME", ".well-known"]) {
     if (existsSync(asset)) cpSync(asset, join(OUT_DIR, asset), { recursive: true });
   }
 
