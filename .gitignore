@@ -34,3 +34,6 @@ id_ed25519
 
 # Local-only agent context (personal strategy — never commit)
 AGENTS.local.md
+PRODUCT.md
+DESIGN.md
+.impeccable/
