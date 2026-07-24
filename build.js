@@ -19,7 +19,7 @@ import { join } from "node:path";
 // ── Site config ─────────────────────────────────────────────────────────────
 // TODO(author): set SITE_URL to your real domain once DNS is on Cloudflare Pages.
 // Until then the *.pages.dev URL Cloudflare gives you works for feed/sitemap links.
-const SITE_URL   = (process.env.SITE_URL || "https://jomi-se-blog.pages.dev").replace(/\/$/, "");
+const SITE_URL   = (process.env.SITE_URL || "https://jomi-se-blog.jose-m-arroyo-se.workers.dev").replace(/\/$/, "");
 const SITE_TITLE = process.env.SITE_TITLE || "jomi.se — engineering notes";
 const SITE_DESC  = process.env.SITE_DESC  || "Technical writing by an engineer, in the open.";
 const AUTHOR     = process.env.SITE_AUTHOR || "José";
