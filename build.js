@@ -106,11 +106,12 @@ function page(title, bodyHtml, { description = SITE_DESC } = {}) {
 <link rel="alternate" type="application/rss+xml" title="${escHtml(SITE_TITLE)}" href="/feed.xml">
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/base.css">
+<script>(()=>{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t})()</script>
 </head>
 <body>
 <header class="site-header">
   <a class="site-title" href="/"><svg class="site-mark" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>${escHtml(SITE_TITLE)}</a>
-  <nav><a href="/archive/">Archive</a> <a href="/feed.xml">RSS</a></nav>
+  <nav><a href="/archive/">Archive</a> <a href="/feed.xml">RSS</a><button class="theme-toggle" aria-label="Toggle light/dark theme" onclick="const r=document.documentElement,c=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),n=c==='dark'?'light':'dark';r.dataset.theme=n;localStorage.setItem('theme',n)">◐</button></nav>
 </header>
 <main>
 ${bodyHtml}
