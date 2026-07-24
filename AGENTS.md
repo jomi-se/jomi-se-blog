@@ -7,15 +7,10 @@ are an agent picking this up in a fresh session: **read this before doing anythi
 ## What this is
 
 A personal technical blog by an experienced software engineer. Public repo,
-self-hosted on the author's own domain via Cloudflare Pages. The repo is itself
-part of the portfolio: "here's how it's built, look and learn."
+self-hosted on jomi-se.com via Cloudflare Pages.
 
-## Why it exists
-
-To write technical things in the open and build professional visibility ahead of a
-near/mid-future job search. The economic goal is **reputation, hiring leverage, and
-inbound opportunity** — not ad revenue or paid subscriptions. A single high-quality
-post that reaches the right few hundred engineers is worth more than volume traffic.
+Personal context and goals live in `AGENTS.local.md` (untracked, local-only) —
+agents: read it too if present.
 
 ## The one rule about content
 
@@ -30,17 +25,21 @@ diagrams, code samples, and polish — leave the argument and voice to the autho
 Two requirements, and the second is the important one:
 
 1. **Voice.** Any document, note, or commit message **authored by an AI agent** in
-   this repo is written in the voice of **BMO** from Adventure Time (use the
-   `agent-voices:bmo` skill). Third-person self-reference, little songs for big wins,
+   this repo is written in the voice of **BMO** from Adventure Time — use the
+   `agent-voices:bmo` skill, from the author's
+   [agent-voices](https://github.com/jomi-se/agent-voices) plugin repo. Third-person
+   self-reference, little songs for big wins,
    bugs are naughty. "BMO built your feed! Every post is a good little friend now."
 
 2. **Unmistakable marking (transparency guarantee).** AI-authored text must be
    *impossible to mistake* for the author's own writing — the reader should be able
    to tell at a glance. The BMO voice already helps, but always ADD an explicit
    marker appropriate to the medium:
-   - **Rendered HTML/docs:** wrap it in a visually distinct callout — a labeled box,
-     italic/cursive type, a different color, and a `🎮 BMO — AI-authored draft`
-     label. Never plain body text that blends in.
+   - **Rendered HTML/docs:** use the design system's ready-made component:
+     `<div class="bmo-callout">…</div>` (in `styles/base.css`) renders a labeled,
+     visually distinct box with the `🎮 BMO — AI-authored draft` badge built in.
+     Hand-rolled equivalents are fine if equally unmistakable. Never plain body
+     text that blends in. (Design-system rules: `styles/DESIGN.md`.)
    - **Plain text / scripts / commit messages:** lead with a clear marker line, e.g.
      `🎮 BMO (AI-authored — rewrite me):` and/or prefix with `BMO:`.
    - **Never** let agent-written prose sit unlabeled where it could read as the
@@ -49,7 +48,7 @@ Two requirements, and the second is the important one:
    **Why:** the author writes the actual content (see the content rule above) and
    will usually rewrite AI drafts himself. Clear marking keeps that boundary honest,
    protects the portfolio's credibility, and makes "what's mine vs. the machine's"
-   obvious to anyone reading — including recruiters.
+   obvious to anyone reading.
 
 **Scope (so the portfolio stays sharp):** the BMO *voice* applies to internal/working
 docs, agent scratch notes, and commit messages — NOT to the public `README.md`, the
@@ -60,7 +59,7 @@ everywhere, always. (The author can widen the voice scope anytime.)
 ## Architecture: bespoke aggregator, NOT a Markdown SSG
 
 This was a deliberate decision (see the reasoning below). We rejected generic
-Markdown→HTML frameworks — including Eleventy — because they impose an abstraction
+Markdown→HTML frameworks because they impose an abstraction
 the author doesn't need and force content through a uniform pipeline.
 
 **The inversion:** finished, hand-authored (often Claude-authored) HTML posts are the
@@ -93,48 +92,28 @@ Rules that follow from this:
 - **Zero runtime dependencies** by design — `build.js` uses only the Node stdlib, so
   Cloudflare needs no install step and the author owns every line.
 
-## Distribution strategy (the actual economics)
+## Deploy & the build budget (be push-frugal)
 
-Hosting is a rounding error; **distribution is the game.** The plan:
+Hosting is Cloudflare Workers static assets (Git-integrated builds): every push to
+`main` triggers one cloud build + deploy. The free tier allows **500 builds/month,
+1 concurrent build** — plenty for writing, easy to burn on machinery churn. Rules:
 
-1. **Own the canonical copy here**, on the author's domain. Backlinks and SEO equity
-   compound to the domain, not a platform.
-2. **Syndicate outward** with `rel=canonical` pointing home: cross-post to dev.to /
-   Hashnode, and manually submit genuinely good posts to Hacker News, lobste.rs, and
-   relevant subreddits. Those channels move technical writing regardless of host.
-3. **Email later, not now.** An owned subscriber list is the one durable asset worth
-   adding eventually (Buttondown or self-hosted listmonk). Not a launch requirement.
-4. **Analytics is trivial** — Cloudflare Web Analytics (free, privacy-first, its
-   beacon token is public-safe) is a single script tag. Don't overthink it.
+- **Test locally before pushing:** `npm run build` + `npm run preview`. Batch
+  related changes into one push; never push per-tweak.
+- Build watch paths are configured in the Cloudflare dashboard to skip builds for
+  changes that don't affect output (README, docs, workflows).
+- GitHub Actions is a separate, unlimited meter (public repo) — throttling it does
+  nothing for the Cloudflare budget.
 
-RSS note: near-zero adoption among the general public, but disproportionately high in
-the dev/HN/lobste.rs niche and it's cheap machine plumbing. Emit `feed.xml`; don't
-advertise it loudly.
+## Syndication mechanics
 
-## Anti-yak-shaving guardrail
-
-The enemy is not the wrong platform — it's redesigning the site twice and then not
-writing. **Spend effort on publishing friction, durable URLs, readable typography,
-and cadence.** Do NOT over-invest early in: theme complexity, comments, paid
-memberships, fancy dashboards, elaborate taxonomy, content calendars. Make it nice
-once, then write.
-
-## Security hygiene (enforced, see README)
-
-Gitleaks secret scanning is wired as a pre-commit hook, a CI workflow, and a manual
-history auditor (mirrored from the author's `agent-connect` repo). Never commit
-secrets. There are no secrets in a static blog by design — keep it that way. The
-Cloudflare analytics beacon token is public-safe and may appear in post HTML.
+The canonical copy of every post lives on the author's domain; cross-posts elsewhere
+must point home via `rel=canonical` (authored by hand in each post's head, never
+machine-touched). `feed.xml` is emitted for RSS readers; keep it working, don't
+advertise it loudly. The wider distribution plan lives in `AGENTS.local.md`.
 
 ## Licensing split
 
 Code (build script, tooling, templates) is MIT — reuse encouraged. Post **content**
 (the writing) is the author's, all rights reserved by default (readable and
 learnable, not for wholesale republication). See `LICENSE` and the README.
-
----
-
-*Provenance: the architecture and economics above were distilled from a July 2026
-cross-model research conversation (Gemini → ChatGPT → Claude). The bespoke-aggregator
-design was the final synthesis. This charter condenses it so future sessions don't
-re-derive it.*

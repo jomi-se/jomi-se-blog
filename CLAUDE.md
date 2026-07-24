@@ -5,3 +5,5 @@
      if ever needed. (This comment is stripped before entering context.) -->
 
 @AGENTS.md
+
+@AGENTS.local.md

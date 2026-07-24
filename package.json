@@ -1,7 +1,7 @@
 {
   "name": "jomi-se-blog",
   "version": "0.1.0",
-  "description": "Personal technical blog — bespoke HTML posts aggregated by a zero-dependency build script.",
+  "description": "Personal blog",
   "type": "module",
   "private": true,
   "license": "MIT",

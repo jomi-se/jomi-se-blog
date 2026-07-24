@@ -4,8 +4,8 @@
 
 # The blog's design system — "Quiet Workbench"
 
-BMO distilled this, called it "The Open Workbench. It is tuned down for reading: a bright, calm
-studio where prose is the main tool on the bench.
+BMO distilled this from a design language called "The Open Workbench", tuned
+down for reading: a bright, calm studio where prose is the main tool on the bench.
 
 ## The two files
 

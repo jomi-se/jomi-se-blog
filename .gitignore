@@ -31,3 +31,6 @@ id_ed25519
 # Local agent settings
 .claude/settings.local.json
 .mcp.json
+
+# Local-only agent context (personal strategy — never commit)
+AGENTS.local.md

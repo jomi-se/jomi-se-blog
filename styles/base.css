@@ -110,6 +110,28 @@ th { font-size: var(--text-label); font-weight: var(--weight-bold); color: var(-
 }
 .tag:hover { color: var(--color-accent); }
 
+/* AI-authored content marker (AGENTS.md house rule): unmistakable, labeled.
+   Periwinkle = the external-agent identity in our functional palette. */
+.bmo-callout {
+  border: 1px dashed var(--periwinkle);
+  background: var(--periwinkle-soft);
+  color: var(--color-fg);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-style: italic;
+  margin-block: var(--space-lg);
+}
+.bmo-callout::before {
+  content: "🎮 BMO — AI-authored draft";
+  display: block;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 600;
+  color: var(--periwinkle-deep);
+  margin-bottom: var(--space-sm);
+}
+
 .site-footer {
   color: var(--color-muted); font-size: .9rem;
   border-top: 1px solid var(--color-border);
