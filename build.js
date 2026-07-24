@@ -17,9 +17,9 @@ import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, cpSync, ex
 import { join } from "node:path";
 
 // ── Site config ─────────────────────────────────────────────────────────────
-// TODO(author): set SITE_URL to your real domain once DNS is on Cloudflare Pages.
-// Until then the *.pages.dev URL Cloudflare gives you works for feed/sitemap links.
-const SITE_URL   = (process.env.SITE_URL || "https://jomi-se-blog.jose-m-arroyo-se.workers.dev").replace(/\/$/, "");
+// SITE_URL is the canonical home (custom domain on Cloudflare). Override via env
+// (e.g. SITE_URL=https://... node build.js) for staging/preview builds.
+const SITE_URL   = (process.env.SITE_URL || "https://jomi-se.com").replace(/\/$/, "");
 const SITE_TITLE = process.env.SITE_TITLE || "jomi.se — engineering notes";
 const SITE_DESC  = process.env.SITE_DESC  || "Technical writing by an engineer, in the open.";
 const AUTHOR     = process.env.SITE_AUTHOR || "José";
