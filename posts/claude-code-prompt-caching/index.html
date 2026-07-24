@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>How prompt caching works in Claude Code — and how to make the most of it</title>
+<meta property="og:title" content="How prompt caching works in Claude Code — and how to make the most of it">
+<meta property="og:description" content="Claude Code caches your prompts as you go. When continuing an existing conversation, the previous part of your prompt that is already cached is billed only at 10% of the full cost. By default, Claude Code in billed-per-token setups sets a prompt cache TTL of 5 mins. This means that if you take longer than 5 mins to continue a Claude Code session, you'll pay full price for the whole conversation every turn.">
+<meta property="article:published_time" content="2026-07-24">
+<meta name="keywords" content="claude-code,llm,costs">
+<link rel="canonical" href="https://jomi-se.com/posts/claude-code-prompt-caching/">
+
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../styles/tokens.css">
+<link rel="stylesheet" href="../../styles/base.css">
+<style>
+  .lede { font-size: 1.25rem; line-height: 1.6; color: var(--color-fg-raised); }
+  .post-meta { display: flex; gap: var(--space-md); align-items: baseline; flex-wrap: wrap;
+               color: var(--color-muted); font-size: var(--text-label);
+               font-variant-numeric: tabular-nums; margin-bottom: var(--space-lg); }
+  .tldr { border-left: 3px solid var(--color-accent);
+          background: var(--color-surface); padding: var(--space-md) var(--space-lg);
+          border-radius: 0 var(--radius-md) var(--radius-md) 0; margin-bottom: var(--space-xl); }
+  .tldr .label { display: block; font-size: var(--text-label); font-weight: var(--weight-bold);
+                 color: var(--color-accent-deep); margin-bottom: var(--space-xs); }
+  .syndicated { font-size: var(--text-label); color: var(--color-muted); }
+  td:nth-child(2) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .verdict-good { color: var(--success); font-weight: var(--weight-bold); }
+  .verdict-bad  { color: var(--danger);  font-weight: var(--weight-bold); }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-title" href="/"><svg class="site-mark" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>Jose M — Blog posts and notes</a>
+  <nav><a href="/archive/">Archive</a></nav>
+</header>
+<main>
+<article>
+  <h1>How prompt caching works in Claude Code — and how to make the most of it</h1>
+  <p class="post-meta">
+    <time datetime="2026-07-24">2026-07-24</time>
+    <span><a class="tag" href="/tags/claude-code/">#claude-code</a> <a class="tag" href="/tags/llm/">#llm</a> <a class="tag" href="/tags/costs/">#costs</a></span>
+    <span class="syndicated">originally posted on <a href="https://www.reddit.com/r/ClaudeAI/comments/1uih6w7/how_prompt_caching_works_in_claude_code_and_how/">r/ClaudeAI</a></span>
+  </p>
+
+  <div class="tldr">
+    <span class="label">TL;DR</span>
+    Claude Code caches your prompts as you go. When continuing an existing
+    conversation, the previous part of your prompt that is already cached is billed
+    only at 10% of the full cost. By default, Claude Code in billed-per-token setups
+    sets a prompt cache TTL of 5 mins. <strong>This means that if you take longer
+    than 5 mins to continue a Claude Code session, you'll pay full price for the
+    whole conversation every turn.</strong>
+  </div>
+
+  <p class="lede">
+    The time of being more conscious of our token usage is upon us 🙌 So I went down
+    a rabbit hole to figure out how to best make use of Claude Code's prompt prefix
+    caching mechanism. Here's what I came up with. If you're interested, the full
+    <a href="https://code.claude.com/docs/en/prompt-caching">official docs are here</a>
+    and are very good and detailed.
+  </p>
+
+  <h2>How the cache works</h2>
+
+  <p>Prompt caching is a <em>prefix cache</em>. Every turn, the API matches the
+  start of your request (model + system prompt + project context + full convo
+  history) against what has recently been cached, and only the newly appended bit
+  of the conversation is fresh work.</p>
+
+  <p>A cache write is when Claude Code commits the current conversation up to that
+  point to be cached for a certain TTL (<em>time to live</em>): 5 mins or 1 hour
+  depending on auth type or configuration. If following turns in a Claude Code
+  session start with that <em>exact</em> prompt "prefix", then that cache is used
+  and that part of the conversation is billed at a highly discounted rate.</p>
+
+  <p>Change anything earlier in that prefix and you'll get a cache miss. Everything
+  will be re-read (or re-committed as a cache) and you'll be billed for <strong>the
+  whole context again</strong>.</p>
+
+  <p>Cached prefixes expire after inactivity, but <em>every cache hit resets the
+  TTL</em>, so an active session stays available as cache.</p>
+
+  <h2>Cache pricing (relative to base input price)</h2>
+
+  <ul>
+    <li>Cache <em>read</em> = ~0.1x (10%)</li>
+    <li>Cache <em>write</em> (5m TTL) = 1.25x</li>
+    <li>Cache <em>write</em> (1h TTL) = 2x</li>
+  </ul>
+
+  <h2>Default cache TTL depends on how you auth</h2>
+
+  <ul>
+    <li>On a Claude <em>subscription</em> (personal pro/max accounts for example),
+      the main conversation auto-uses the 1h TTL at no extra cost. It drops to 5m
+      only if you're over your plan limit on usage credits.</li>
+    <li>On an <em>API key / Bedrock / Vertex</em> setup, default is 5m, because
+      the 1h TTL cache is more expensive upfront.
+      <ul>
+        <li>Note: Claude Code logged in with an enterprise account, even though
+          billed-per-token, also uses the 1-hour TTL by default.</li>
+      </ul>
+    </li>
+    <li>You can override the cache TTL manually with
+      <code>ENABLE_PROMPT_CACHING_1H=1</code> or <code>FORCE_PROMPT_CACHING_5M=1</code>.</li>
+    <li>Subagents always use 5m, even on a subscription.</li>
+  </ul>
+
+  <h2>The cost breakdown: hits vs. misses</h2>
+
+  <p>To visualize the cost impact of caching, let's take an imaginary example: a
+  <strong>3,000 token base prompt, followed by 5 conversational rounds adding
+  1,000 tokens each</strong>.</p>
+
+  <p><strong>The math:</strong></p>
+
+  <ul>
+    <li><strong>On a cache hit:</strong> You pay the 10% read rate for the
+      accumulated context, plus the write premium (1.25x for 5m, 2x for 1h)
+      <em>only</em> for the 1k new tokens.</li>
+    <li><strong>On a cache miss:</strong> The window expired. You pay the write
+      premium to re-cache the <em>entire</em> context from scratch.</li>
+  </ul>
+
+  <p>Here is the total token cost for the entire 5-round session compared to a
+  non-cached baseline:</p>
+
+  <table>
+    <thead>
+      <tr><th>Scenario</th><th>Total cost</th><th>The verdict</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>No cache</td><td>30.0 units</td><td>The baseline imaginary cost without caching at all.</td></tr>
+      <tr><td>5m TTL — all hits</td><td>12.2 units</td><td><span class="verdict-good">Cheapest</span> (~60% savings).</td></tr>
+      <tr><td>1h TTL — all hits</td><td>18.2 units</td><td>Good (~40% savings).</td></tr>
+      <tr><td>5m TTL — all misses</td><td>37.5 units</td><td>Worse than no cache.</td></tr>
+      <tr><td>1h TTL — all misses</td><td>60.0 units</td><td><span class="verdict-bad">Most expensive</span> (2x base rate).</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Some takeaways and tips</h2>
+
+  <ul>
+    <li>The most cost effective workflow is to target always hitting the 5 min
+      windows for long running tasks and sessions. If you can't consistently
+      (meetings, context switching, multitasking), consider switching to 1h TTL
+      <strong>but</strong> make sure to take advantage of those cache windows,
+      otherwise you'll end up spending more.
+      <ul>
+        <li>This makes me think that multitasking makes it pretty hard to hit these
+          caches effectively with the 5min TTL.</li>
+      </ul>
+    </li>
+    <li>If you're planning to take a break but want to continue the session later
+      on, consider either:
+      <ul>
+        <li>Running <code>/compact</code> while the cache is still warm before
+          going on a break.</li>
+        <li>Telling Claude to "manually" persist and compact the session into files
+          a new fresh session can pick from scratch.</li>
+      </ul>
+    </li>
+    <li>Corollary to the previous point: There is no point, from a cost
+      perspective, in running <code>/compact</code> on a previous long session
+      after it already went out of cache. It'll cost more than just continuing from
+      where it left.</li>
+    <li>Be careful with changes mid-session to some settings like model type,
+      effort level, plugins or MCPs. Some of them might invalidate the cache
+      because they'll change something in Claude's internal system prompt. Check
+      the <a href="https://code.claude.com/docs/en/prompt-caching">official
+      docs</a> for specific details about this.</li>
+  </ul>
+</article>
+</main>
+<footer class="site-footer">
+  <p>© 2026 José Arroyo · <a href="/feed.xml">RSS</a> · <a href="https://github.com/jomi-se/jomi-se-blog">Source</a></p>
+</footer>
+</body>
+</html>
