@@ -81,7 +81,9 @@ Rules that follow from this:
   - `<meta property="og:title" content="...">`
   - `<meta property="og:description" content="...">` — also used as the feed summary
   - `<meta property="article:published_time" content="YYYY-MM-DD">`
-  - `<meta name="keywords" content="tag-a,tag-b">` — comma-separated tags
+  - `<meta name="keywords" content="tag-a,tag-b">` — comma-separated tags.
+    **Silent by design:** parsed and kept as metadata (SEO, potential future
+    feed categories) but never rendered — no tag chips, no tag pages.
   - `<link rel="canonical" href="https://DOMAIN/posts/<slug>/">` — set by hand;
     critical for the syndication strategy (see below)
 - **`build.js` derives, from that metadata alone:** the home index, a by-year

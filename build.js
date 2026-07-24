@@ -6,7 +6,6 @@
 // (OpenGraph + standard tags) and emits only the DERIVED files into dist/:
 //   - index.html          (home: newest-first list of posts)
 //   - archive/index.html  (grouped by year)
-//   - tags/<tag>/index.html
 //   - feed.xml            (RSS 2.0, summary-only from og:description)
 //   - sitemap.xml
 // Plus a straight copy of posts/ and styles/ (and any top-level static assets).
@@ -83,6 +82,8 @@ function loadPosts() {
       title,
       date,
       summary: metaBy(head, "property", "og:description") || "",
+      // Tags stay "silent": parsed from <meta keywords> for potential future use
+      // (feed categories, related posts) but deliberately NOT rendered anywhere.
       tags: keywords.split(",").map(t => t.trim()).filter(Boolean),
       canonical: linkHref(head, "canonical"),
     });
@@ -125,7 +126,6 @@ ${bodyHtml}
 const postLi = p => `  <li class="post-item">
     <time datetime="${escHtml(p.date)}">${escHtml(p.date || "—")}</time>
     <a href="${escHtml(p.url)}">${escHtml(p.title)}</a>
-    ${p.tags.map(t => `<a class="tag" href="/tags/${encodeURIComponent(t)}/">#${escHtml(t)}</a>`).join(" ")}
   </li>`;
 
 // ── Emit ───────────────────────────────────────────────────────────────────────
@@ -160,14 +160,6 @@ function build() {
   ).join("\n");
   write("archive/index.html", page(`Archive · ${SITE_TITLE}`, `<h1>Archive</h1>\n${archiveBody}`));
 
-  // Tag pages
-  const byTag = {};
-  for (const p of posts) for (const t of p.tags) (byTag[t] ??= []).push(p);
-  for (const [tag, list] of Object.entries(byTag)) {
-    write(`tags/${tag}/index.html`, page(`#${tag} · ${SITE_TITLE}`,
-      `<h1>#${escHtml(tag)}</h1>\n<ul class="post-list">\n${list.map(postLi).join("\n")}\n</ul>`));
-  }
-
   // RSS feed (summary-only — never touches post bodies)
   const items = posts.map(p => `  <item>
     <title>${escXml(p.title)}</title>
@@ -189,14 +181,13 @@ ${items}
 
   // Sitemap
   const urls = [`${SITE_URL}/`, `${SITE_URL}/archive/`,
-    ...posts.map(p => SITE_URL + p.url),
-    ...Object.keys(byTag).map(t => `${SITE_URL}/tags/${t}/`)];
+    ...posts.map(p => SITE_URL + p.url)];
   write("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map(u => `  <url><loc>${escXml(u)}</loc></url>`).join("\n")}
 </urlset>`);
 
-  console.log(`✓ Built ${posts.length} post(s) → ${OUT_DIR}/  (index, archive, ${Object.keys(byTag).length} tag page(s), feed.xml, sitemap.xml)`);
+  console.log(`✓ Built ${posts.length} post(s) → ${OUT_DIR}/  (index, archive, feed.xml, sitemap.xml)`);
 }
 
 build();

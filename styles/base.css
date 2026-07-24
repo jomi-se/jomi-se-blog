@@ -105,12 +105,6 @@ th { font-size: var(--text-label); font-weight: var(--weight-bold); color: var(-
 .post-list { list-style: none; padding: 0; }
 .post-item { display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap; padding: .4rem 0; }
 .post-item time { color: var(--color-muted); font-variant-numeric: tabular-nums; font-size: .9rem; min-width: 6rem; }
-.tag {
-  font-size: var(--text-label); font-weight: var(--weight-medium);
-  color: var(--color-muted); text-decoration: none;
-  transition: color var(--duration) var(--ease-out);
-}
-.tag:hover { color: var(--color-accent); }
 
 /* AI-authored content marker (AGENTS.md house rule): unmistakable, labeled.
    Periwinkle = the external-agent identity in our functional palette. */
