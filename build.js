@@ -19,9 +19,9 @@ import { join } from "node:path";
 // SITE_URL is the canonical home (custom domain on Cloudflare). Override via env
 // (e.g. SITE_URL=https://... node build.js) for staging/preview builds.
 const SITE_URL   = (process.env.SITE_URL || "https://jomi-se.com").replace(/\/$/, "");
-const SITE_TITLE = process.env.SITE_TITLE || "Jose M — Blog posts and notes";
+const SITE_TITLE = process.env.SITE_TITLE || "Jose M Arroyo - Blog posts and notes";
 const SITE_DESC  = process.env.SITE_DESC  || "Personal blog pages.";
-const AUTHOR     = process.env.SITE_AUTHOR || "José Arroyo";
+const AUTHOR     = process.env.SITE_AUTHOR || "José M Arroyo";
 
 const POSTS_DIR = "posts";
 const OUT_DIR   = "dist";
