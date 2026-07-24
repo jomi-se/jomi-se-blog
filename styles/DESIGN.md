@@ -4,9 +4,7 @@
 
 # The blog's design system — "Quiet Workbench"
 
-BMO distilled this from two references the author picked: the **Agent Connect
-Canvas** design system ("The Open Workbench") and the **Architecture Story**
-Claude Design project. Same family, tuned down for reading: a bright, calm
+BMO distilled this, called it "The Open Workbench. It is tuned down for reading: a bright, calm
 studio where prose is the main tool on the bench.
 
 ## The two files
@@ -43,8 +41,12 @@ paths — they only ever exist inside `dist/`.
   `--radius-md`…): raw values. Components never use them directly — but post
   diagrams and callouts may.
 - **Semantics** (`--color-bg`, `--color-fg`, `--color-accent`, `--color-code-bg`…):
-  what `base.css` and post styles consume. **Only this tier flips between light
-  and dark**, so anything built on semantics themes for free.
+  what `base.css` and post styles consume. This tier flips between light and
+  dark, so anything built on semantics themes for free.
+- **Exception that helps you:** the functional tint pairs (`-soft` fills,
+  `-deep` text-on-fill) are *adaptive* — they flip too. A chip written as
+  `background: var(--teal-soft); color: var(--teal-deep)` is correct in both
+  themes automatically. Canonical (`--teal`) and `-bright` values are constant.
 
 Dark mode follows the OS (`prefers-color-scheme`); a page can force a side with
 `<html data-theme="dark|light">`. If you build on primitives directly, YOU own
@@ -70,8 +72,25 @@ making it work in both themes.
   thing being built, teal = boundary/infra, periwinkle = external agent/service,
   amber = in-flight, green = success, red = failure. Pick once, keep it stable
   across every figure in the post. Each has `-soft` (fills) and `-deep` (text on
-  fills) variants; `-bright` variants are for dark backgrounds.
+  fills) variants — both adapt per theme — plus constant `-bright` variants for
+  hand-built dark surfaces.
 - **Red means trouble.** `--danger` only for failure/warnings, never emphasis.
+
+## Code snippets (syntax highlighting)
+
+No runtime highlighter, no build step — highlighting is **author-time markup**.
+When BMO (or any agent) helps produce a post, code samples get tiny spans:
+
+```html
+<span class="tok-k">const</span> <span class="tok-f">build</span> = …
+```
+
+Classes: `tok-c` comment · `tok-k` keyword · `tok-s` string · `tok-f` function ·
+`tok-n` number/constant · `tok-t` type/tag/attr. Plain unhighlighted `<pre>` is
+always fine too. The palette lives in `--code-*` tokens and is **theme-constant**
+because code panels sit on dark grounds in both themes (ink in light mode, an
+inset well in dark mode). Same identities as the diagrams: periwinkle keywords,
+teal strings, coral functions, amber numbers.
 
 ## Structure & motion
 

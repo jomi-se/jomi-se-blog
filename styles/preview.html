@@ -55,8 +55,8 @@ See <code>styles/DESIGN.md</code> for the rules.</p>
     <span class="actor-chip" style="background:var(--teal-soft);color:var(--teal-deep)"><span class="dot"></span>teal</span>
     <span class="actor-chip" style="background:var(--periwinkle-soft);color:var(--periwinkle-deep)"><span class="dot"></span>periwinkle</span>
     <span class="actor-chip" style="background:var(--amber-soft);color:var(--amber-deep)"><span class="dot"></span>amber</span>
-    <span class="actor-chip" style="background:var(--success-soft);color:var(--success)"><span class="dot"></span>success</span>
-    <span class="actor-chip" style="background:var(--danger-soft);color:var(--danger)"><span class="dot"></span>danger</span>
+    <span class="actor-chip" style="background:var(--success-soft);color:var(--success-deep)"><span class="dot"></span>success</span>
+    <span class="actor-chip" style="background:var(--danger-soft);color:var(--danger-deep)"><span class="dot"></span>danger</span>
   </p>
 </section>
 
@@ -75,6 +75,13 @@ See <code>styles/DESIGN.md</code> for the rules.</p>
   quiet tint, panels sit on ink in both themes:</p>
   <pre><code>$ node build.js
 ✓ Built 1 post(s) → dist/  (index, archive, 2 tag page(s), feed.xml, sitemap.xml)</code></pre>
+  <p>Syntax highlighting is author-time <code>.tok-*</code> spans — no runtime JS,
+  one theme-constant palette (panels are dark in both modes):</p>
+  <pre><code><span class="tok-c">// Order-independent: grab the whole tag, then pull `content` out.</span>
+<span class="tok-k">function</span> <span class="tok-f">metaBy</span>(head, attr, value) {
+  <span class="tok-k">const</span> tag = head.<span class="tok-f">match</span>(<span class="tok-k">new</span> <span class="tok-t">RegExp</span>(<span class="tok-s">`&lt;meta\\b[^&gt;]*${attr}=["']${value}["']`</span>, <span class="tok-s">"i"</span>));
+  <span class="tok-k">return</span> tag ? <span class="tok-f">decode</span>(tag[<span class="tok-n">0</span>].<span class="tok-f">trim</span>()) : <span class="tok-n">null</span>;
+}</code></pre>
   <div class="callout"><strong>Callout.</strong> Accent-soft fill, accent-deep text,
   structural left border. Reskin per post by overriding <code>--color-accent</code>.</div>
 </section>

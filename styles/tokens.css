@@ -50,14 +50,17 @@
   --gray-line:      oklch(0.85 0.012 250);
   --gray-line-strong: oklch(0.7 0.018 250);
 
-  /* Night neutrals (dark-theme counterparts, same hue family) */
-  --night:          oklch(0.19 0.015 250);
-  --night-raised:   oklch(0.235 0.018 250);
-  --night-strong:   oklch(0.285 0.02 250);
-  --fog:            oklch(0.93 0.008 250);
-  --fog-mid:        oklch(0.68 0.015 250);
-  --night-line:     oklch(0.33 0.02 250);
-  --night-line-strong: oklch(0.46 0.022 250);
+  /* Night neutrals (dark-theme counterparts, same hue family).
+     Lifted-slate values in the GitHub-Dark-Dimmed / Nord register — a dim room,
+     not a void. --night-inset is the one surface darker than the page (code). */
+  --night:          oklch(0.25 0.02 250);
+  --night-inset:    oklch(0.205 0.016 250);
+  --night-raised:   oklch(0.3 0.02 250);
+  --night-strong:   oklch(0.35 0.022 250);
+  --fog:            oklch(0.92 0.01 250);
+  --fog-mid:        oklch(0.72 0.015 250);
+  --night-line:     oklch(0.4 0.02 250);
+  --night-line-strong: oklch(0.53 0.022 250);
 
   /* Functional colors — stable identities, never generic decoration.
      Each has a canonical value, a -soft tint (fills), and a -deep (text on tint).
@@ -81,9 +84,11 @@
   --amber-deep:     oklch(0.44 0.11 83);
   --success:        oklch(0.48 0.12 150);
   --success-soft:   oklch(0.95 0.03 150);
+  --success-deep:   oklch(0.4 0.1 150);
   --success-bright: oklch(0.72 0.1 150);
   --danger:         oklch(0.5 0.18 25);
   --danger-soft:    oklch(0.96 0.03 25);
+  --danger-deep:    oklch(0.42 0.15 25);
   --danger-bright:  oklch(0.68 0.14 25);
 
   /* Type faces */
@@ -142,6 +147,17 @@
   --color-code-bg:       var(--ink);          /* code panels are ink-on-dark, both themes */
   --color-code-fg:       oklch(0.95 0.008 250);
 
+  /* Syntax palette — theme-CONSTANT, because code panels are dark in both
+     themes. Same functional-color identities as the diagrams, tuned bright
+     for dark grounds. Applied via .tok-* spans authored into post HTML
+     (no runtime highlighter, no build step — see DESIGN.md). */
+  --code-comment:  oklch(0.63 0.015 250);
+  --code-keyword:  oklch(0.78 0.1 275);    /* periwinkle */
+  --code-string:   oklch(0.78 0.08 190);   /* teal */
+  --code-function: oklch(0.75 0.12 32.1);  /* coral */
+  --code-number:   oklch(0.82 0.12 83);    /* amber — also constants */
+  --code-type:     oklch(0.87 0.045 190);  /* pale teal — types, tags, attrs */
+
   color-scheme: light dark;
 }
 
@@ -160,10 +176,25 @@
     --color-border-strong: var(--night-line-strong);
     --color-accent:        var(--coral-bright);
     --color-accent-deep:   var(--coral-bright);
-    --color-accent-soft:   oklch(0.28 0.06 32.1);
-    --color-code-bg:       var(--night-raised);
+    --color-accent-soft:   oklch(0.33 0.06 32.1);
+    --color-code-bg:       var(--night-inset);
     --color-code-fg:       var(--fog);
     --shadow-lift: 0 6px 8px oklch(0 0 0 / 0.35);
+
+    /* Adaptive tint pairs: -soft fills go dark & low-chroma, -deep text goes
+       bright — same markup reads right on slate (the GitHub-dark-label move). */
+    --coral-soft:      oklch(0.32 0.06 32.1);
+    --coral-deep:      oklch(0.84 0.07 32.1);
+    --teal-soft:       oklch(0.3 0.045 190);
+    --teal-deep:       oklch(0.85 0.06 190);
+    --periwinkle-soft: oklch(0.32 0.07 275);
+    --periwinkle-deep: oklch(0.85 0.06 275);
+    --amber-soft:      oklch(0.32 0.06 83);
+    --amber-deep:      oklch(0.87 0.1 83);
+    --success-soft:    oklch(0.3 0.05 150);
+    --success-deep:    oklch(0.84 0.09 150);
+    --danger-soft:     oklch(0.3 0.06 25);
+    --danger-deep:     oklch(0.84 0.09 25);
   }
 }
 :root[data-theme="dark"] {
@@ -177,10 +208,22 @@
   --color-border-strong: var(--night-line-strong);
   --color-accent:        var(--coral-bright);
   --color-accent-deep:   var(--coral-bright);
-  --color-accent-soft:   oklch(0.28 0.06 32.1);
-  --color-code-bg:       var(--night-raised);
+  --color-accent-soft:   oklch(0.33 0.06 32.1);
+  --color-code-bg:       var(--night-inset);
   --color-code-fg:       var(--fog);
   --shadow-lift: 0 6px 8px oklch(0 0 0 / 0.35);
+  --coral-soft:      oklch(0.32 0.06 32.1);
+  --coral-deep:      oklch(0.84 0.07 32.1);
+  --teal-soft:       oklch(0.3 0.045 190);
+  --teal-deep:       oklch(0.85 0.06 190);
+  --periwinkle-soft: oklch(0.32 0.07 275);
+  --periwinkle-deep: oklch(0.85 0.06 275);
+  --amber-soft:      oklch(0.32 0.06 83);
+  --amber-deep:      oklch(0.87 0.1 83);
+  --success-soft:    oklch(0.3 0.05 150);
+  --success-deep:    oklch(0.84 0.09 150);
+  --danger-soft:     oklch(0.3 0.06 25);
+  --danger-deep:     oklch(0.84 0.09 25);
 }
 
 /* Reduced motion: collapse transitions to instant state changes. */
