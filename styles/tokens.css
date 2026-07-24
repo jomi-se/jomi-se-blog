@@ -1,0 +1,189 @@
+/* tokens.css — the design-token foundation for jomi-se.com.
+   Derived from the "Open Workbench" design language (Agent Connect Canvas /
+   Architecture Story references): cool oklch neutrals, functional accent colors,
+   Figtree Variable + IBM Plex Mono, compact radii, flat structural-first surfaces.
+
+   Two tiers:
+     1. PRIMITIVES  — raw values (ramps, faces, steps). Never referenced by
+        components directly; posts may reach for them in diagrams/callouts.
+     2. SEMANTICS   — `--color-*`, `--font-*`, `--text-*` … what base.css and
+        post styles actually consume. Theming (light/dark) flips ONLY this tier.
+
+   Posts link this file with a RELATIVE path so they stay browser-openable
+   standalone AND work deployed:  <link rel="stylesheet" href="../../styles/tokens.css">
+   See styles/DESIGN.md for usage guidance. */
+
+/* ── Self-hosted fonts (OFL-licensed; no external CDN by policy) ─────────── */
+@font-face {
+  font-family: "Figtree Variable";
+  font-style: normal; font-display: swap; font-weight: 300 900;
+  src: url("fonts/figtree-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Figtree Variable";
+  font-style: normal; font-display: swap; font-weight: 300 900;
+  src: url("fonts/figtree-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal; font-display: swap; font-weight: 400;
+  src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal; font-display: swap; font-weight: 600;
+  src: url("fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+}
+
+:root {
+  /* ── PRIMITIVES ────────────────────────────────────────────────────────── */
+
+  /* Neutrals (hue 250 — cool, near-gray) */
+  --paper:          oklch(1 0 0);
+  --mist:           oklch(0.972 0.006 250);
+  --mist-strong:    oklch(0.935 0.01 250);
+  --ink:            oklch(0.2 0.018 250);
+  --ink-raised:     oklch(0.27 0.022 250);
+  --gray-mid:       oklch(0.46 0.018 250);
+  --gray-line:      oklch(0.85 0.012 250);
+  --gray-line-strong: oklch(0.7 0.018 250);
+
+  /* Night neutrals (dark-theme counterparts, same hue family) */
+  --night:          oklch(0.19 0.015 250);
+  --night-raised:   oklch(0.235 0.018 250);
+  --night-strong:   oklch(0.285 0.02 250);
+  --fog:            oklch(0.93 0.008 250);
+  --fog-mid:        oklch(0.68 0.015 250);
+  --night-line:     oklch(0.33 0.02 250);
+  --night-line-strong: oklch(0.46 0.022 250);
+
+  /* Functional colors — stable identities, never generic decoration.
+     Each has a canonical value, a -soft tint (fills), and a -deep (text on tint).
+     In posts: use them consistently per diagram role, like the reference's
+     actor-color rule (coral = this system, teal = boundary/infra, periwinkle =
+     external agent/service, amber = in-flight, green = done, red = failure). */
+  --coral:          oklch(0.56 0.16 32.1);
+  --coral-soft:     oklch(0.94 0.035 32.1);
+  --coral-deep:     oklch(0.37 0.12 32.1);
+  --coral-bright:   oklch(0.7 0.13 32.1);      /* dark-bg variant */
+  --teal:           oklch(0.43 0.09 190);
+  --teal-soft:      oklch(0.95 0.025 190);
+  --teal-deep:      oklch(0.31 0.07 190);
+  --teal-bright:    oklch(0.72 0.06 190);
+  --periwinkle:     oklch(0.52 0.15 275);
+  --periwinkle-soft: oklch(0.95 0.025 275);
+  --periwinkle-deep: oklch(0.34 0.12 275);
+  --periwinkle-bright: oklch(0.75 0.09 275);
+  --amber:          oklch(0.79 0.14 83);
+  --amber-soft:     oklch(0.96 0.04 83);
+  --amber-deep:     oklch(0.44 0.11 83);
+  --success:        oklch(0.48 0.12 150);
+  --success-soft:   oklch(0.95 0.03 150);
+  --success-bright: oklch(0.72 0.1 150);
+  --danger:         oklch(0.5 0.18 25);
+  --danger-soft:    oklch(0.96 0.03 25);
+  --danger-bright:  oklch(0.68 0.14 25);
+
+  /* Type faces */
+  --font-ui:   "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale (size / line-height / weight). Figtree is variable: any 300–900. */
+  --text-headline: clamp(2rem, 5vw, 3rem);   /* post/page titles */
+  --text-title:    1.375rem;                  /* section headings */
+  --text-body:     1rem;
+  --text-label:    0.8125rem;                 /* metadata, tags, controls */
+  --text-code:     0.875rem;
+  --leading-tight: 1.1;
+  --leading-heading: 1.25;
+  --leading-body:  1.65;
+  --weight-body:   430;
+  --weight-medium: 550;
+  --weight-bold:   650;
+  --weight-black:  720;
+  --tracking-tight: -0.02em;
+
+  /* Spacing steps */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-section: 96px;
+
+  /* Shape & structure */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --measure: 46rem;   /* reading column ≈ 70ch */
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration: 200ms;
+
+  /* Elevation — flat by default; one compact lift for transient surfaces */
+  --shadow-lift: 0 6px 8px oklch(0.2 0.018 250 / 0.08);
+
+  /* ── SEMANTICS (light) — what components consume; themes flip these ────── */
+  --color-bg:            var(--paper);
+  --color-surface:       var(--mist);
+  --color-surface-strong: var(--mist-strong);
+  --color-fg:            var(--ink);
+  --color-fg-raised:     var(--ink-raised);
+  --color-muted:         var(--gray-mid);
+  --color-border:        var(--gray-line);
+  --color-border-strong: var(--gray-line-strong);
+  --color-accent:        var(--coral);        /* links, brand marks */
+  --color-accent-deep:   var(--coral-deep);   /* accent text on soft tints */
+  --color-accent-soft:   var(--coral-soft);   /* accent fills */
+  --color-code-bg:       var(--ink);          /* code panels are ink-on-dark, both themes */
+  --color-code-fg:       oklch(0.95 0.008 250);
+
+  color-scheme: light dark;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────────
+   Follows the OS by default; a page can force a theme with
+   <html data-theme="dark"> / <html data-theme="light">. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg:            var(--night);
+    --color-surface:       var(--night-raised);
+    --color-surface-strong: var(--night-strong);
+    --color-fg:            var(--fog);
+    --color-fg-raised:     var(--paper);
+    --color-muted:         var(--fog-mid);
+    --color-border:        var(--night-line);
+    --color-border-strong: var(--night-line-strong);
+    --color-accent:        var(--coral-bright);
+    --color-accent-deep:   var(--coral-bright);
+    --color-accent-soft:   oklch(0.28 0.06 32.1);
+    --color-code-bg:       var(--night-raised);
+    --color-code-fg:       var(--fog);
+    --shadow-lift: 0 6px 8px oklch(0 0 0 / 0.35);
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg:            var(--night);
+  --color-surface:       var(--night-raised);
+  --color-surface-strong: var(--night-strong);
+  --color-fg:            var(--fog);
+  --color-fg-raised:     var(--paper);
+  --color-muted:         var(--fog-mid);
+  --color-border:        var(--night-line);
+  --color-border-strong: var(--night-line-strong);
+  --color-accent:        var(--coral-bright);
+  --color-accent-deep:   var(--coral-bright);
+  --color-accent-soft:   oklch(0.28 0.06 32.1);
+  --color-code-bg:       var(--night-raised);
+  --color-code-fg:       var(--fog);
+  --shadow-lift: 0 6px 8px oklch(0 0 0 / 0.35);
+}
+
+/* Reduced motion: collapse transitions to instant state changes. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration: 0ms; }
+}

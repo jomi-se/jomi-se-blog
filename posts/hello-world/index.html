@@ -18,13 +18,19 @@
 <meta name="keywords" content="meta,setup">
 <link rel="canonical" href="https://jomi-se.com/posts/hello-world/">
 
-<!-- Shared base styles are optional in a post — pull them in if you want the
-     site's defaults, then override freely. Bespoke posts can skip this entirely. -->
-<link rel="stylesheet" href="/styles/base.css">
+<!-- Design system (see styles/DESIGN.md). RELATIVE paths keep the post
+     browser-openable standalone AND working when deployed:
+       tokens.css — colors/type/spacing tokens + self-hosted fonts (keep this)
+       base.css   — the house layout/typography (optional; skip to go bespoke)
+     Override any token locally to reskin just this post, e.g.:
+       <style>:root { --color-accent: var(--teal); --measure: 52rem; }</style> -->
+<link rel="stylesheet" href="../../styles/tokens.css">
+<link rel="stylesheet" href="../../styles/base.css">
 <style>
   /* Per-post styles live right here. This is the "form serves content" freedom. */
+  body { padding-inline: 1.25rem; max-width: var(--measure); margin-inline: auto; }
   .lede { font-size: 1.25rem; line-height: 1.6; }
-  .contract { border-left: 3px solid var(--accent, #3b82f6); padding-left: 1rem; }
+  .contract { border-left: 3px solid var(--color-accent); padding-left: var(--space-md); }
 </style>
 </head>
 <body>

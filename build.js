@@ -100,6 +100,7 @@ function page(title, bodyHtml, { description = SITE_DESC } = {}) {
 <title>${escHtml(title)}</title>
 <meta name="description" content="${escHtml(description)}">
 <link rel="alternate" type="application/rss+xml" title="${escHtml(SITE_TITLE)}" href="/feed.xml">
+<link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/base.css">
 </head>
 <body>

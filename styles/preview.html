@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design system preview — jomi-se.com</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="base.css">
+<style>
+  /* Preview-only chrome. Not part of the system. */
+  body { max-width: 60rem; margin-inline: auto; padding: var(--space-xl) 1.25rem; }
+  section { margin-block: var(--space-section) }
+  section:first-of-type { margin-top: var(--space-xl); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--space-md); list-style: none; padding: 0; }
+  .swatch { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+  .swatch .chip { height: 3.5rem; }
+  .swatch figcaption { padding: var(--space-sm) var(--space-md); font-size: var(--text-label); }
+  .swatch code { background: none; padding: 0; color: var(--color-muted); font-size: .75rem; }
+  .type-row { display: flex; align-items: baseline; gap: var(--space-lg); border-bottom: 1px solid var(--color-border); padding-block: var(--space-md); }
+  .type-row .spec { min-width: 11rem; font-size: var(--text-label); color: var(--color-muted); font-family: var(--font-mono); }
+  .actor-chip { display: inline-flex; align-items: center; gap: var(--space-sm); min-height: 32px; border-radius: var(--radius-pill); padding: 6px 12px; font-size: var(--text-label); font-weight: var(--weight-bold); }
+  .actor-chip .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: currentColor; }
+  .callout { border-left: 3px solid var(--color-accent); background: var(--color-accent-soft); color: var(--color-accent-deep); padding: var(--space-md) var(--space-lg); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .theme-toggle { position: fixed; top: var(--space-md); right: var(--space-md); min-height: 40px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); padding: 8px 14px; background: var(--color-surface); color: var(--color-fg); font: var(--weight-bold) var(--text-label)/1.3 var(--font-ui); cursor: pointer; }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="const r=document.documentElement,cur=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');r.dataset.theme=cur==='dark'?'light':'dark'">◐ theme</button>
+
+<h1>Quiet Workbench</h1>
+<p class="intro">The design system of jomi-se.com — tokens, type, and house components.
+Everything on this page is built from <code>tokens.css</code> + <code>base.css</code>.
+See <code>styles/DESIGN.md</code> for the rules.</p>
+
+<section>
+  <h2>Semantic colors</h2>
+  <p>What components consume. These flip automatically between light and dark.</p>
+  <ul class="swatches">
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-bg)"></div><figcaption>bg<br><code>--color-bg</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-surface)"></div><figcaption>surface<br><code>--color-surface</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-surface-strong)"></div><figcaption>surface-strong<br><code>--color-surface-strong</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-fg)"></div><figcaption>fg<br><code>--color-fg</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-muted)"></div><figcaption>muted<br><code>--color-muted</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-border)"></div><figcaption>border<br><code>--color-border</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-accent)"></div><figcaption>accent<br><code>--color-accent</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-accent-soft)"></div><figcaption>accent-soft<br><code>--color-accent-soft</code></figcaption></figure></li>
+    <li><figure class="swatch"><div class="chip" style="background:var(--color-code-bg)"></div><figcaption>code-bg<br><code>--color-code-bg</code></figcaption></figure></li>
+  </ul>
+
+  <h3 style="margin-top:var(--space-xl)">Functional palette (diagram identities)</h3>
+  <p>Stable roles for figures: coral = the thing being built, teal = boundary/infra,
+  periwinkle = external agent, amber = in-flight, green = done, red = failure.</p>
+  <p>
+    <span class="actor-chip" style="background:var(--coral-soft);color:var(--coral-deep)"><span class="dot"></span>coral</span>
+    <span class="actor-chip" style="background:var(--teal-soft);color:var(--teal-deep)"><span class="dot"></span>teal</span>
+    <span class="actor-chip" style="background:var(--periwinkle-soft);color:var(--periwinkle-deep)"><span class="dot"></span>periwinkle</span>
+    <span class="actor-chip" style="background:var(--amber-soft);color:var(--amber-deep)"><span class="dot"></span>amber</span>
+    <span class="actor-chip" style="background:var(--success-soft);color:var(--success)"><span class="dot"></span>success</span>
+    <span class="actor-chip" style="background:var(--danger-soft);color:var(--danger)"><span class="dot"></span>danger</span>
+  </p>
+</section>
+
+<section>
+  <h2>Type</h2>
+  <div class="type-row"><span class="spec">headline · 720</span><span style="font-size:var(--text-headline);font-weight:var(--weight-black);letter-spacing:var(--tracking-tight);line-height:var(--leading-tight)">Engineering notes</span></div>
+  <div class="type-row"><span class="spec">title · 650</span><span style="font-size:var(--text-title);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight)">A section heading</span></div>
+  <div class="type-row"><span class="spec">body · 430</span><span>Body text explains things at a comfortable 1rem/1.65, capped near seventy characters per line.</span></div>
+  <div class="type-row"><span class="spec">label · 650</span><span style="font-size:var(--text-label);font-weight:var(--weight-bold)">Metadata, tags, controls</span></div>
+  <div class="type-row"><span class="spec">code · mono 400</span><code>defineTool({ name: "set_page_message" })</code></div>
+</section>
+
+<section>
+  <h2>Evidence</h2>
+  <p>Prose explains; monospace proves. Inline <code>identifiers</code> sit on a
+  quiet tint, panels sit on ink in both themes:</p>
+  <pre><code>$ node build.js
+✓ Built 1 post(s) → dist/  (index, archive, 2 tag page(s), feed.xml, sitemap.xml)</code></pre>
+  <div class="callout"><strong>Callout.</strong> Accent-soft fill, accent-deep text,
+  structural left border. Reskin per post by overriding <code>--color-accent</code>.</div>
+</section>
+
+<section>
+  <h2>House components</h2>
+  <ul class="post-list">
+    <li class="post-item"><time datetime="2026-07-24">2026-07-24</time><a href="#">Hello, world — and how this blog is built</a> <a class="tag" href="#">#meta</a> <a class="tag" href="#">#setup</a></li>
+    <li class="post-item"><time datetime="2026-08-02">2026-08-02</time><a href="#">A second post, for rhythm</a> <a class="tag" href="#">#example</a></li>
+  </ul>
+  <blockquote>A blockquote: muted voice, structural border, no drama.</blockquote>
+  <table>
+    <thead><tr><th>token</th><th>value</th><th>use</th></tr></thead>
+    <tbody>
+      <tr><td><code>--radius-sm/md/lg</code></td><td>6 / 10 / 14px</td><td>compact, confident corners</td></tr>
+      <tr><td><code>--duration</code></td><td>200ms ease-out</td><td>state feedback only</td></tr>
+      <tr><td><code>--shadow-lift</code></td><td>0 6px 8px</td><td>the only shadow</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer class="site-footer"><p>styles/preview.html — living reference, not published to the site index.</p></footer>
+</body>
+</html>
