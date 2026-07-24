@@ -1,0 +1,57 @@
+/* base.css — minimal shared defaults. Posts may pull this in and override freely,
+   or skip it entirely for fully bespoke layouts. Keep it small on purpose. */
+
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #666;
+  --accent: #2563eb;
+  --border: #e5e7eb;
+  --maxw: 46rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --fg: #e6e6e6;
+    --muted: #9aa0a6;
+    --accent: #6ea8fe;
+    --border: #262a30;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+main, .site-header, .site-footer { max-width: var(--maxw); margin-inline: auto; padding-inline: 1.25rem; }
+
+.site-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  padding-block: 1.5rem; border-bottom: 1px solid var(--border);
+}
+.site-title { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--fg); }
+.site-header nav a { margin-left: 1rem; }
+
+main { padding-block: 2rem; }
+a { color: var(--accent); }
+a:hover { text-decoration: underline; }
+h1, h2, h3 { line-height: 1.25; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+pre { overflow-x: auto; padding: 1rem; background: rgba(127,127,127,.1); border-radius: 8px; }
+code { background: rgba(127,127,127,.12); padding: .1em .35em; border-radius: 4px; }
+pre code { background: none; padding: 0; }
+
+.intro { color: var(--muted); margin-bottom: 2rem; }
+
+.post-list { list-style: none; padding: 0; }
+.post-item { display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap; padding: .4rem 0; }
+.post-item time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .9rem; min-width: 6rem; }
+.tag { font-size: .8rem; color: var(--muted); text-decoration: none; }
+.tag:hover { color: var(--accent); }
+
+.site-footer { color: var(--muted); font-size: .9rem; border-top: 1px solid var(--border); padding-block: 1.5rem; margin-top: 3rem; }

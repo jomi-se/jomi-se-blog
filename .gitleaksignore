@@ -1,0 +1,3 @@
+# Gitleaks allowlist: one line per known false positive, formatted as
+#   <commit-sha>:<path>:<rule-id>:<line>
+# Add entries only after confirming the match is genuinely not a secret.

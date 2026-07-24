@@ -1,0 +1,14 @@
+{
+  // Static-site deployment on Cloudflare Workers (the newer flow that replaced
+  // classic Pages). `node build.js` produces ./dist; `npx wrangler deploy` uploads
+  // it as static assets. No Worker script ("main") is needed for a pure static site.
+  "name": "jomi-se-blog",
+  "compatibility_date": "2026-07-24",
+  "assets": {
+    // Directory build.js writes to. Everything here is served as-is.
+    "directory": "./dist",
+    // Serve /posts/foo/ from /posts/foo/index.html, and show a 404 for unknown paths.
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

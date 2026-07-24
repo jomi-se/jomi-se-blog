@@ -1,0 +1,33 @@
+# Build output (Cloudflare Pages rebuilds this; never commit it)
+dist/
+
+# Drafts — unpublished posts stay local until moved into posts/
+drafts/
+
+# Node
+node_modules/
+npm-debug.log*
+*.local
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Secrets and keys — there should be none in a static blog, but belt-and-braces.
+# (Mirrored from agent-connect. Keep reviewed *.example templates trackable.)
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Local agent settings
+.claude/settings.local.json
+.mcp.json

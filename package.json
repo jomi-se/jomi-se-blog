@@ -1,0 +1,17 @@
+{
+  "name": "jomi-se-blog",
+  "version": "0.1.0",
+  "description": "Personal technical blog — bespoke HTML posts aggregated by a zero-dependency build script.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.js",
+    "preview": "node build.js && node --version >/dev/null && (cd dist && python3 -m http.server 8787)",
+    "security:hooks:install": "./scripts/install-git-hooks.sh",
+    "security:scan": "./scripts/scan-secrets.sh history"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
