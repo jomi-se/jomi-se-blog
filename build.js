@@ -47,15 +47,15 @@ function metaBy(head, attr, value) {
   const re = new RegExp(`<meta\\b[^>]*\\b${attr}=["']${value.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}["'][^>]*>`, "i");
   const tag = head.match(re);
   if (!tag) return null;
-  const c = tag[0].match(/\bcontent=["']([\s\S]*?)["']/i);
-  return c ? decode(c[1].trim()) : null;
+  const c = tag[0].match(/\bcontent=(?:"([^"]*)"|'([^']*)')/i);
+  return c ? decode((c[1] ?? c[2]).trim()) : null;
 }
 function linkHref(head, rel) {
   const re = new RegExp(`<link\\b[^>]*\\brel=["']${rel}["'][^>]*>`, "i");
   const tag = head.match(re);
   if (!tag) return null;
-  const h = tag[0].match(/\bhref=["']([^"']*)["']/i);
-  return h ? decode(h[1].trim()) : null;
+  const h = tag[0].match(/\bhref=(?:"([^"]*)"|'([^']*)')/i);
+  return h ? decode((h[1] ?? h[2]).trim()) : null;
 }
 function titleOf(head) {
   const m = head.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
