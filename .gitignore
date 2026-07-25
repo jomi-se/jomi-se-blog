@@ -31,6 +31,13 @@ id_ed25519
 # Local agent settings
 .claude/settings.local.json
 .mcp.json
+*.doctor-backup
+
+# Locally installed agent skills (impeccable et al.) — per-machine, not repo content
+.agents/
+.claude/skills/
+.codex/
+.gemini/
 
 # Local-only agent context (personal strategy — never commit)
 AGENTS.local.md
