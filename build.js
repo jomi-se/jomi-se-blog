@@ -20,7 +20,8 @@ import { join } from "node:path";
 // (e.g. SITE_URL=https://... node build.js) for staging/preview builds.
 const SITE_URL   = (process.env.SITE_URL || "https://jomi-se.com").replace(/\/$/, "");
 const SITE_TITLE = process.env.SITE_TITLE || "Jose M Arroyo - Blog posts and notes";
-const SITE_DESC  = process.env.SITE_DESC  || "Personal blog pages.";
+// The author's own bio line (doubles as meta description + RSS description).
+const SITE_DESC  = process.env.SITE_DESC  || "Chilean/French software engineer. Blog posts, deep dives and experiments.";
 const AUTHOR     = process.env.SITE_AUTHOR || "José M Arroyo";
 
 const POSTS_DIR = "posts";
@@ -61,6 +62,15 @@ function titleOf(head) {
   return m ? decode(m[1].trim()) : null;
 }
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDate = iso => {
+  const m = (iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : iso || "";
+};
+
+// Optional 7th head tag: keys a post's home-page card to one functional color.
+const ACCENTS = new Set(["coral", "teal", "periwinkle", "amber"]);
+
 // ── Load posts ───────────────────────────────────────────────────────────────
 function loadPosts() {
   if (!existsSync(POSTS_DIR)) return [];
@@ -86,13 +96,18 @@ function loadPosts() {
       // (feed categories, related posts) but deliberately NOT rendered anywhere.
       tags: keywords.split(",").map(t => t.trim()).filter(Boolean),
       canonical: linkHref(head, "canonical"),
+      accent: (a => ACCENTS.has(a) ? a : null)(metaBy(head, "name", "home-accent") || ""),
     });
   }
   return posts.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
 // ── Page shell ────────────────────────────────────────────────────────────────
-function page(title, bodyHtml, { description = SITE_DESC } = {}) {
+const themeToggle = `<button class="theme-toggle" aria-label="Toggle light/dark theme" onclick="const r=document.documentElement,c=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),n=c==='dark'?'light':'dark';r.dataset.theme=n;localStorage.setItem('theme',n)">◐</button>`;
+
+// `header: false` drops the site header (home carries its own identity strip
+// with the nav folded in — the wordmark would just duplicate the h1 there).
+function page(title, bodyHtml, { description = SITE_DESC, header = true } = {}) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -109,10 +124,10 @@ function page(title, bodyHtml, { description = SITE_DESC } = {}) {
 <script>(()=>{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t})()</script>
 </head>
 <body>
-<header class="site-header">
+${header ? `<header class="site-header">
   <a class="site-title" href="/"><svg class="site-mark" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>${escHtml(SITE_TITLE)}</a>
-  <nav><a href="/archive/">Archive</a> <a href="/feed.xml">RSS</a><button class="theme-toggle" aria-label="Toggle light/dark theme" onclick="const r=document.documentElement,c=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),n=c==='dark'?'light':'dark';r.dataset.theme=n;localStorage.setItem('theme',n)">◐</button></nav>
-</header>
+  <nav><a href="/archive/">Archive</a> <a href="/feed.xml">RSS</a>${themeToggle}</nav>
+</header>` : ""}
 <main>
 ${bodyHtml}
 </main>
@@ -125,9 +140,17 @@ ${bodyHtml}
 }
 
 const postLi = p => `  <li class="post-item">
-    <time datetime="${escHtml(p.date)}">${escHtml(p.date || "—")}</time>
+    ${p.date ? `<time datetime="${escHtml(p.date)}">${escHtml(fmtDate(p.date))}</time>` : ""}
     <a href="${escHtml(p.url)}">${escHtml(p.title)}</a>
   </li>`;
+
+// Home snippet card: real summary from og:description, identity from the
+// optional home-accent circle. Never touches post bodies.
+const postCard = p => `  <article class="post-card${p.accent ? ` post-card--${p.accent}` : ""}">
+    <p class="post-card-meta"><span class="post-dot" aria-hidden="true"></span>${p.date ? `<time datetime="${escHtml(p.date)}">${escHtml(fmtDate(p.date))}</time>` : ""}</p>
+    <h2 class="post-card-title"><a href="${escHtml(p.url)}">${escHtml(p.title)}</a></h2>${p.summary ? `
+    <p class="post-card-summary">${escHtml(p.summary)}</p>` : ""}
+  </article>`;
 
 // ── Emit ───────────────────────────────────────────────────────────────────────
 function write(relPath, contents) {
@@ -148,10 +171,32 @@ function build() {
     if (existsSync(asset)) cpSync(asset, join(OUT_DIR, asset), { recursive: true });
   }
 
-  // Home
-  const intro = `<section class="intro"><p>${escHtml(SITE_DESC)}</p></section>`;
-  write("index.html", page(SITE_TITLE,
-    `${intro}\n<ul class="post-list">\n${posts.map(postLi).join("\n")}\n</ul>`));
+  // ── Home ── direction contract ("Snippet cards on the bench", seed 4008c17a):
+  // THESIS: the homepage answers "who is this and what does he write" in one
+  //   viewport; it refuses the anonymous date+title link list.
+  // OWN-WORLD: Quiet Workbench unchanged — cool neutrals, hairline borders,
+  //   compact radii; functional colors as per-post identity via the circle
+  //   motif carried down from the logo.
+  // STORY: the reader meets the author (h1 + authored bio + GitHub/LinkedIn),
+  //   skims real og:description summaries on flat cards, and leaves knowing
+  //   what this blog is and where its source lives.
+  // FIRST VIEWPORT: identity strip (mark 44px + h1 + bio + links), then the
+  //   newest card. Primary action: opening a post.
+  // FORM: grounded candidate 5 (uniform snippet-card stack), assigned by
+  //   roll; staging challenger rejected (gating opposes skim-first reading).
+  const identity = `<section class="home-id">
+  <svg class="home-mark" viewBox="0 0 32 32" width="44" height="44" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>
+  <div class="home-id-text">
+    <h1>José Arroyo</h1>
+    <p class="home-bio">${escHtml(SITE_DESC)}</p>
+    <p class="home-links"><a href="https://github.com/jomi-se">GitHub</a> <a href="https://www.linkedin.com/in/jos%C3%A9-miguel-a-b2233b80/">LinkedIn</a></p>
+  </div>
+  <nav class="home-nav"><a href="/archive/">Archive</a>${themeToggle}</nav>
+</section>`;
+  const cards = posts.length
+    ? `<div class="post-cards">\n${posts.map(postCard).join("\n")}\n</div>`
+    : `<p class="empty-note">No posts yet.</p>`;
+  write("index.html", page(SITE_TITLE, [identity, cards].join("\n"), { header: false }));
 
   // Archive by year
   const byYear = {};

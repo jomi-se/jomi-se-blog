@@ -27,12 +27,12 @@ tags you'd want for SEO and social cards:
 <link rel="canonical" href="https://DOMAIN/posts/<slug>/">
 ```
 
-Everything below `</head>` is free-form. See [`posts/hello-world/`](./posts/hello-world/)
-for the template.
+Everything below `</head>` is free-form. See [`templates/hello-world/`](./templates/hello-world/)
+for the template (kept out of the published site — only `posts/` is built).
 
 ## Writing a post
 
-1. `cp -r posts/hello-world posts/my-slug`
+1. `cp -r templates/hello-world posts/my-slug`
 2. Edit the six head tags (point `canonical` at `/posts/my-slug/`).
 3. Write the body however the content wants. Put images/assets in the same folder.
 4. `npm run build` and open `dist/index.html` (or `npm run preview` for a local server).

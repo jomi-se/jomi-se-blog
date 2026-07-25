@@ -108,13 +108,81 @@ table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--color-border); }
 th { font-size: var(--text-label); font-weight: var(--weight-bold); color: var(--color-muted); }
 
-:focus-visible { outline: 2px solid var(--periwinkle); outline-offset: 3px; }
+/* Focus ring uses the adaptive -deep token: dark periwinkle on paper,
+   bright periwinkle on slate — ≥3:1 in both themes (AA). */
+:focus-visible { outline: 2px solid var(--periwinkle-deep); outline-offset: 3px; }
 
 .intro { color: var(--color-muted); margin-bottom: var(--space-xl); }
 
 .post-list { list-style: none; padding: 0; }
 .post-item { display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap; padding: .4rem 0; }
-.post-item time { color: var(--color-muted); font-variant-numeric: tabular-nums; font-size: .9rem; min-width: 6rem; }
+.post-item time { color: var(--color-muted); font-variant-numeric: tabular-nums; font-size: .9rem; min-width: 7rem; }
+
+/* ── Home surface: identity strip + snippet cards ─────────────────────────
+   (Surface brief in HOMEPAGE-PLAN.md / direction contract in build.js.)
+   Cards are flat Quiet Workbench surfaces — hairline border, no shadow.
+   Per-post identity is the accent dot: the logo's circle motif carried down,
+   colored via the adaptive -deep tokens so it reads in both themes. */
+.home-id {
+  display: flex; gap: var(--space-lg); align-items: flex-start; flex-wrap: wrap;
+  margin-top: var(--space-sm);
+}
+/* Home carries no site header; Archive + theme toggle live in the strip. */
+.home-nav {
+  margin-left: auto; margin-top: .5rem;
+  display: flex; align-items: baseline;
+  font-size: var(--text-label); font-weight: var(--weight-bold);
+}
+.home-nav a { text-decoration: none; }
+/* Narrow screens: the nav overlaps the strip's top-right corner instead of
+   taking its own row — the identity stays at the top of the page. */
+@media (max-width: 40rem) {
+  .home-id { position: relative; }
+  .home-nav { position: absolute; top: 0; right: 0; margin: 0; }
+}
+.home-mark { flex: none; margin-top: .5rem; }
+.home-id-text { flex: 1; min-width: 16rem; }
+.home-id h1 { margin: 0; }
+.home-bio { margin: var(--space-sm) 0 0; color: var(--color-muted); }
+.home-links {
+  display: flex; gap: var(--space-md); margin: var(--space-sm) 0 0;
+  font-size: var(--text-label); font-weight: var(--weight-bold);
+}
+.post-cards { display: grid; gap: var(--space-md); margin-block: var(--space-xl); }
+.post-card {
+  position: relative; /* anchors the stretched title link below */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: border-color var(--duration) var(--ease-out);
+}
+.post-card:hover, .post-card:focus-within { border-color: var(--color-border-strong); }
+.post-card:hover .post-card-title a { color: var(--color-accent); text-decoration: underline; }
+.post-card-meta {
+  display: flex; align-items: center; gap: var(--space-sm);
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-label); color: var(--color-muted);
+}
+.post-card-meta time { font-variant-numeric: tabular-nums; }
+.post-dot {
+  width: 9px; height: 9px; border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+}
+.post-card--coral      .post-dot { background: var(--coral-deep); }
+.post-card--teal       .post-dot { background: var(--teal-deep); }
+.post-card--periwinkle .post-dot { background: var(--periwinkle-deep); }
+.post-card--amber      .post-dot { background: var(--amber-deep); }
+.post-card-title { margin: 0; font-size: var(--text-title); }
+.post-card-title a {
+  color: var(--color-fg-raised); text-decoration: none;
+  transition: color var(--duration) var(--ease-out);
+}
+/* Stretched link: the title's hit area covers the whole card, so the card is
+   one big link with one tab stop and the title as its accessible name. */
+.post-card-title a::after { content: ""; position: absolute; inset: 0; }
+.post-card-title a:hover { color: var(--color-accent); text-decoration: underline; }
+.post-card-summary { margin: var(--space-sm) 0 0; }
+.empty-note { color: var(--color-muted); }
 
 /* AI-authored content marker (AGENTS.md house rule): unmistakable, labeled.
    Periwinkle = the external-agent identity in our functional palette. */

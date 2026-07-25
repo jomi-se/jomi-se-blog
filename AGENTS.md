@@ -76,7 +76,8 @@ Rules that follow from this:
   JS — whatever the content wants. This freedom is the whole point; don't flatten it.
 - **Metadata lives in the `<head>` as OpenGraph/standard tags** — which you'd want
   anyway for SEO and social cards. These do double duty as the build's source of
-  truth. The required contract per post (see `posts/hello-world/index.html`):
+  truth. The required contract per post (see `templates/hello-world/index.html`,
+  the unpublished template — copy it into `posts/<slug>/` to start a post):
   - `<title>` — fallback title
   - `<meta property="og:title" content="...">`
   - `<meta property="og:description" content="...">` — also used as the feed summary
@@ -86,6 +87,9 @@ Rules that follow from this:
     feed categories) but never rendered — no tag chips, no tag pages.
   - `<link rel="canonical" href="https://DOMAIN/posts/<slug>/">` — set by hand;
     critical for the syndication strategy (see below)
+  - Optional: `<meta name="home-accent" content="coral|teal|periwinkle|amber">` —
+    keys the post's snippet card on the home page to one functional color
+    (rendered as the card's accent dot). Absent → neutral card.
 - **`build.js` derives, from that metadata alone:** the home index, a by-year
   archive, per-tag pages, `feed.xml` (summary-only, pulled from `og:description` so
   bodies never need parsing), and `sitemap.xml`. Output goes to `dist/`.
