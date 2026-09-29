@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Implementing NodeJS HTTP Graceful Shutdown</title>
+<meta property="og:title" content="Implementing NodeJS HTTP Graceful Shutdown">
+<meta property="og:description" content="How we fixed an issue we had with our zero-downtime code deployment at Dashlane">
+<meta property="article:published_time" content="2026-09-27">
+<meta name="keywords" content="nodejs,http,backend,deployment">
+<meta name="home-accent" content="teal">
+<link rel="canonical" href="https://jomi-se.com/posts/nodejs-http-graceful-shutdown/">
+
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../styles/tokens.css">
+<link rel="stylesheet" href="../../styles/base.css">
+<style>
+  .lede { font-size: 1.25rem; line-height: 1.6; color: var(--color-fg-raised); }
+  .post-meta { display: flex; gap: var(--space-md); align-items: baseline; flex-wrap: wrap;
+               color: var(--color-muted); font-size: var(--text-label);
+               font-variant-numeric: tabular-nums; margin-bottom: var(--space-lg); }
+  .syndicated { font-size: var(--text-label); color: var(--color-muted); }
+  .preface { margin-bottom: var(--space-xl); padding-bottom: var(--space-lg);
+             border-bottom: 1px solid var(--color-border); }
+  /* The 2020 diagrams are white-ground PNGs: give them a white card so they
+     read as figures (not glare) in dark mode. */
+  figure { margin: var(--space-lg) 0; }
+  figure img { display: block; margin-inline: auto; background: #fff;
+               padding: var(--space-md); border-radius: var(--radius-md);
+               border: 1px solid var(--color-border); }
+</style>
+<script>(()=>{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t})()</script>
+</head>
+<body>
+<header class="site-header">
+  <a class="site-title" href="/"><svg class="site-mark" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><circle cx="16" cy="8" r="5.5" fill="#c04732"/><circle cx="9.072" cy="20" r="5.5" fill="#005f5b"/><circle cx="22.928" cy="20" r="5.5" fill="#525dbd"/></svg>Jose M — Blog posts and notes</a>
+  <nav><a href="/archive/">Archive</a><button class="theme-toggle" aria-label="Toggle light/dark theme" onclick="const r=document.documentElement,c=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),n=c==='dark'?'light':'dark';r.dataset.theme=n;localStorage.setItem('theme',n)">◐</button></nav>
+</header>
+<main>
+<article>
+  <h1>Implementing NodeJS HTTP Graceful Shutdown</h1>
+  <p class="post-meta">
+    <time datetime="2026-09-27">2026-09-27</time>
+    <span class="syndicated">originally published <time datetime="2020-10-05">2020-10-05</time> on the <a href="https://www.dashlane.com/blog/implementing-nodejs-http-graceful-shutdown">Dashlane blog</a></span>
+  </p>
+
+  <section class="preface">
+    <p>I wrote this blog post many years ago. It was the first blog post I ever wrote (not that I have written many since then), and I recently came across it again. It brought back nice memories. Different times. It was nice doing a deep dive on some random networking topic while trying to improve things, at least to some extent.</p>
+    <p>In hindsight, it's kind of funny. At the end of the day, what I was doing was implementing connection draining properly. At the time, none of the common graceful shutdown libraries did it properly: all of them missed the handling of in-flight requests, which was a common scenario for us during deploys (I know this for a fact, I tested them all).</p>
+    <p>Any old load balancer already does this well, but at the time we weren't even using Docker containers, just straight-up Node.js under the <a href="https://nodejs.org/api/cluster.html"><code>cluster</code></a> module. So new workers would replace the old ones in place, and we had to do the connection draining manually.</p>
+    <p>The right solution ended up being to simply move to containers and let the load balancer deal with it. At the same time, when you see a problem like that, and you know that some clients are getting hit by it, you might as well fix it if you can (even if it's something low-level-ish like this).</p>
+    <p>And make a blog post out of it, I guess.</p>
+  </section>
+
+  <p class="lede"><em>How we fixed an issue we had with our zero-downtime code deployment at Dashlane</em></p>
+
+<h2>Introduction</h2>
+<p>If you're reading a post with such a compelling title as "Implementing NodeJS HTTP Graceful Shutdown," you might have run into the same issue that we did here at Dashlane: how to deploy new code for NodeJS servers without ever dropping any requests or generating any errors. A while back, we realized we were generating some errors on clients each time we deploy new server code. This is commonly referred as "gracefully shutting down" your old server and redirecting traffic to a new one—all while still continuing to handle any client requests.</p>
+<p>This article details how we found out about this issue, checked out existing solutions, and finally decided to come up with our own solution. It is meant to teach about this specific (probably very niche 😅) issue and also showing in detail how this kind of problem-solving process might look.</p>
+<h2>The Pain</h2>
+<p>Back in January, 2020, Dashlane's server team was doing routine performance and reliability review of our main API servers. We realised that every time we deployed changes and swapped our running server with servers running new code, we would get a spike in 500 HTTP errors. The spikes weren't seriously big but they were not negligible either.</p>
+<p><em>(The issue has since been solved, so I can't grab a screenshot of what our monitoring used to look like. Here is a drawing instead.)</em></p>
+<figure><img src="graceful-shutdown-error-spikes.png" width="626" height="471" loading="lazy" alt="Hand-drawn chart of 5XX load balancer error count over time: a flat line with a sharp spike at each deploy."></figure>
+
+<p><strong>For context, here are the numbers:</strong></p>
+<ul>
+<li>On each deploy we got a spike of around 600 errors.</li>
+<li>Our servers are handling between 20,000 and 30,000 requests per second.</li>
+<li>The whole server restart procedure lasts around 5 seconds, which means that around 100,000 and 150,000 requests will need to be handled during this time.</li>
+<li>As a result, we were failing to properly handle <strong>0.4-0.6%</strong> of requests being sent by apps during code deploys.</li></ul>
+<p>0.6% of calls doesn't seem like all that much but these are the kind of cryptic errors that neither client developers nor actual users would necessarily know how to handle. So we decided to dig into our code to see how our servers were being shut down and try to alleviate this spike of errors.</p>
+<p><strong>The way our servers were being shut down was (roughly) thus:</strong></p>
+<ol>
+<li>Spawn a new version of the server with the new code in the same machine.</li>
+<li>Direct any <em>new</em> connections or requests to the new server.</li>
+<li>Let the old server run for 5 seconds to let pending requests be handled.</li>
+<li>Cross fingers, shut down the old server and hope for the best. 🤞😬</li></ol>
+<p>Not really the most graceful of shutdowns but it worked well enough.</p>
+<p>We decided to improve this behavior and started researching approaches to graceful shutdown of a NodeJS server. With the thousands of people using NodeJS for their backend we figured that this was probably a solved problem. It turned out to be a very-much-not-really-solved problem.</p>
+<h2>Understanding The Problem And Looking For Solutions</h2>
+<p>We went into NodeJS's <a href="https://nodejs.org/api/http.html#http_class_http_server">HTTP server documentation</a> to see if it had anything there that would help in dealing with graceful shutdown. It turns out that a server instance has a <code>close()</code> function that seems to do what we want.</p>
+<p><strong>From the documentation:</strong></p>
+<blockquote>
+<p><strong>Stops the server from accepting new connections and keeps existing connections</strong>. This function is asynchronous, the server is finally closed when all connections are ended and the server emits a 'close' event.</p></blockquote>
+<p>Oh, cool, this seems to do what we want! 🎉</p>
+<p>But then we came across this old issue on GitHub (from 2015) that made me realize that this function alone would not be enough for graceful shutdown:</p>
+<p><a href="https://github.com/nodejs/node/issues/2642">Keep alive connection do not get closed with server.close()</a></p>
+<p>The gist of it is that clients can send a <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection">"Connection: keep-alive"</a> header in their requests to tell the server to keep the TCP connection between client and server open to be reused by future requests. This is a good thing! Setting up a connection can take time and resources for clients and servers, so being able to reuse them saves the work involved in creating a new connection for each request.</p>
+<p>Our problem here, is that even if the server code calls this <code>close()</code> function, clients can still keep using the existing connections to send new requests. And as long as the client keeps using an open connection, the server won't finish being closed. However, even if the server code called this <code>close()</code> function, the clients don't have a way to know that the server is trying to shut down or that there is a new one available for new connections.</p>
+<p>(Psst: If your networking knowledge could use some plussing-up I suggest checking out <a href="https://twitter.com/b0rk">Julia Evan's zines</a>. <a href="https://wizardzines.com/zines/networking/">This one on networking is free</a> and <a href="https://wizardzines.com/zines/http/">this one on HTTP is paid</a>. I've found them really helpful in the past.)</p>
+<p>The discussion in the comment section issue seemed to get pretty heated. A bunch of approaches were suggested to deal with this behaviour. None of them were accepted to be added to NodeJS's core so a bunch of them ended up being implemented as <strong>npm</strong> packages.</p>
+<p>That is cool! Maybe someone already successfully solved this issue in a way that we could also use! 🎉</p>
+<p>The first part of trying out open source packages is testing them to see if they are a good fit. So we set out to set up a test scenario that somewhat replicated our current setup at Dashlane and see if one of these packages would allow us to gracefully shutdown our servers.</p>
+<p><em>Spoiler Alert: The next section explains how we came up with a small test setup to verify if the existing solutions met our requirements. Tl,dr: They didn't, so we decided to come up with our own solution. If you just want to know how our solution works, you can skip ahead to the "Coming up with our solution" section.</em></p>
+<h2>Testing Out Implementations: Requirements</h2>
+<p>The first part of testing solutions to this problem is <strong>figuring out exactly what we mean by graceful shutdown and under what conditions it needs to work.</strong></p>
+<p>First we need to define what we want out of a graceful shutdown implementation for our NodeJS servers. At a very high level, the end result of what we want is the following: <strong>We want to be able to restart our servers with new code without generating any unexpected errors due to the old servers being shut down.</strong> This means several things:</p>
+<ul>
+<li>During the graceful shutdown process, all incoming requests on new or old connections are properly handled by the server.</li>
+<li>Old connections should be closed in a way that does not generate errors on the client.</li>
+<li>The server should never hang indefinitely while trying to shut down gracefully.</li></ul>
+<p>Then we must also define the conditions under which graceful shutdown needs to happen. These conditions consist of the following requirements at Dashlane for graceful shutdown of our backend:</p>
+<p>First, It needs to happen under the library we currently use for zero-downtime deployments, which is <a href="https://github.com/andrewrk/naught">Naught</a>. Naught is a package that uses <a href="https://nodejs.org/api/cluster.html">NodeJS's Clusters</a> to achieve zero-downtime deployments. Under Naught, there is a <strong>main NodeJS</strong> process and several <strong>worker NodeJS</strong> processes. The main process is the entry point for new connections which are then passed on to the worker processes. The worker processes are the ones running our actual code and instantiating NodeJS HTTP servers. The important thing for us is that when we're deploying new code, we launch new worker processes and all new connections are directed to them as soon as they are online. Our code needed to handle closing existing connections, but it needed to be compatible with NodeJS's Clusters.</p>
+<p>Second, it needs to handle the load our servers are under. This is between 20,000 and 30,000 requests per second, which amounts to something around 200 and 300 requests per second for each server instance.</p>
+<p>Third, the solution needs to be able to deal with <strong>network latency</strong> (a.k.a. lag) something often hand-waived away. When we think about solutions to these kinds of issues, we often end up imagining that requests from clients instantly get to the servers. In the context of graceful shutdown, the fact that a request could have left a client but not have reached the server yet can have a real impact that must be taken into account.</p>
+<p>So in summary, the implementation must:</p>
+<ul>
+<li>Be compatible with <strong>Naught</strong> and <strong>NodeJS Clusters.</strong></li>
+<li>Be able to handle a constant load of 200-300 requests per second.</li>
+<li>Be able to take <strong>network latency</strong> into account.</li></ul>
+<h2>Testing Out Implementations: The Setup</h2>
+<p>To test existing implementations of graceful shutdown, we set up a codebase with a dummy server running under Naught and a script that can be used to send requests at a fixed interval and log the result.</p>
+<p>This is what the <strong>request script</strong> looks like:</p>
+<pre><code><span class="tok-k">const</span> request = <span class="tok-k">require</span>(<span class="tok-s">'request-promise'</span>)
+ 
+<span class="tok-k">let</span> counter = <span class="tok-n">0</span>
+ 
+<span class="tok-k">const</span> reqFrequency = process.argv[<span class="tok-n">2</span>] || <span class="tok-n">50</span>
+ 
+<span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">makeRequest</span>() {
+  counter += <span class="tok-n">1</span>
+  <span class="tok-k">const</span> localCounter = counter
+  <span class="tok-k">const</span> start = Date.<span class="tok-f">now</span>()
+  <span class="tok-k">try</span> {
+    <span class="tok-k">const</span> res = <span class="tok-k">await</span> request
+      .<span class="tok-f">post</span>({
+        url: <span class="tok-s">'http://localhost:8000'</span>,
+        headers: {
+          accept: <span class="tok-s">'application/json'</span>,
+          connection: <span class="tok-s">'keep-alive'</span>,
+          <span class="tok-s">'content-type'</span>: <span class="tok-s">'application/json'</span>,
+          counter: localCounter,
+        },
+        body: <span class="tok-s">'{}'</span>,
+        forever: <span class="tok-k">true</span>,
+      })
+      .<span class="tok-k">catch</span>(e =&gt; {
+        <span class="tok-k">throw</span> e
+      })
+    <span class="tok-k">const</span> result = {
+      timestamp: start,
+      count: localCounter,
+      success: <span class="tok-k">true</span>,
+      response: res,
+      duration: Date.<span class="tok-f">now</span>() - start,
+    }
+    console.<span class="tok-f">log</span>(JSON.<span class="tok-f">stringify</span>(result))
+  } <span class="tok-k">catch</span> (error) {
+    console.<span class="tok-f">log</span>(
+      JSON.<span class="tok-f">stringify</span>({
+        timestamp: start,
+        count: localCounter,
+        success: <span class="tok-k">false</span>,
+        error: error.message,
+        duration: Date.<span class="tok-f">now</span>() - start,
+      }),
+    )
+  }
+}
+ 
+<span class="tok-f">setInterval</span>(() =&gt; <span class="tok-f">makeRequest</span>(), reqFrequency)</code></pre>
+
+<p>It will send a request to the server and log whether the request succeeded or failed, along with some other information.</p>
+<p>The server-side code looks like this:</p>
+<p>The main entry point just sets up the minimal stuff to be ran under <strong>Naught</strong>:</p>
+<pre><code><span class="tok-k">const</span> server = <span class="tok-k">require</span>(<span class="tok-s">'./server'</span>)
+ 
+server.<span class="tok-f">startServer</span>(() =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'online'</span>)
+  process.<span class="tok-f">send</span>(<span class="tok-s">'online'</span>)
+})
+ 
+process.<span class="tok-f">on</span>(<span class="tok-s">'message'</span>, message =&gt; {
+  <span class="tok-k">if</span> (message === <span class="tok-s">'shutdown'</span>) {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'start shutdown'</span>)
+    server.<span class="tok-f">stopServer</span>().<span class="tok-f">finally</span>(() =&gt; {
+      console.<span class="tok-f">log</span>(<span class="tok-s">'finished shutdown'</span>)
+      process.<span class="tok-f">exit</span>(<span class="tok-n">0</span>)
+    })
+  }
+})</code></pre>
+
+<p>(<strong>Naught</strong> will send a 'shutdown' signal after starting a new server instance that will trigger the graceful shutdown procedure.)</p>
+<p>And the actual server code is shown below. This file will set up a server listening on port 8000. It will handle requests by replying a 200 success after a random delay to emulate actually doing something with the request. The <code>serverStoppers</code> file can be used to plug-in different graceful shutdown implementations.</p>
+<pre><code><span class="tok-k">const</span> http = <span class="tok-k">require</span>(<span class="tok-s">'http'</span>)
+<span class="tok-k">const</span> serverStoppers = <span class="tok-k">require</span>(<span class="tok-s">'./serverStoppers'</span>)
+ 
+<span class="tok-k">const</span> RESPONSE_TIME_MS = <span class="tok-n">100</span>
+<span class="tok-k">const</span> RESPONSE_TIME_MAX_VAR_MS = <span class="tok-n">50</span>
+ 
+<span class="tok-c">// This function will emulate actually doing something to the request by</span>
+<span class="tok-c">// replying after some random delay</span>
+<span class="tok-k">const</span> handleReq = (_req, res) =&gt; {
+  <span class="tok-k">const</span> responseTime =
+    RESPONSE_TIME_MS +
+    Math.<span class="tok-f">random</span>() * RESPONSE_TIME_MAX_VAR_MS * <span class="tok-n">2</span> -
+    RESPONSE_TIME_MAX_VAR_MS
+ 
+  <span class="tok-f">setTimeout</span>(() =&gt; {
+    res.<span class="tok-f">writeHead</span>(<span class="tok-n">200</span>)
+    res.<span class="tok-f">end</span>(<span class="tok-s">`${responseTime}ms`</span>)
+  }, responseTime)
+}
+ 
+<span class="tok-k">const</span> server = http.<span class="tok-f">createServer</span>(handleReq)
+<span class="tok-c">// You can replace different graceful shutdown implementations here.</span>
+<span class="tok-c">// A function to start graceful shutdown must be returned.</span>
+<span class="tok-k">const</span> startGracefulShutdownFunc = serverStoppers.someGracefulShutdownImplementation.<span class="tok-f">getServerStopFunc</span>(
+  server
+)
+ 
+<span class="tok-k">const</span> startServer = cb =&gt; {
+  server.<span class="tok-f">listen</span>(<span class="tok-n">8000</span>, cb)
+}
+ 
+<span class="tok-k">const</span> stopServer = () =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'Stopping server'</span>)
+ 
+  <span class="tok-k">return</span> <span class="tok-f">startGracefulShutdownFunc</span>()
+    .<span class="tok-f">then</span>(() =&gt; {
+      console.<span class="tok-f">log</span>(<span class="tok-s">'Server stopped gracefully'</span>)
+    })
+    .<span class="tok-k">catch</span>(error =&gt; {
+      console.<span class="tok-f">log</span>(<span class="tok-s">'Something went wrong while stopping server'</span>, error)
+    })
+}
+ 
+<span class="tok-k">module</span>.<span class="tok-k">exports</span> = {
+  startServer,
+  stopServer,
+}</code></pre>
+
+<p>With this setup we can do the following:</p>
+<p>The server can be ran under <strong>Naught</strong> with the following command:</p>
+<p><code>naught start --remove-old-ipc true --stderr stdout.log app.js</code></p>
+<p>Once the <strong>Naught</strong> daemon is running, the server restart procedure can be triggered by this other command:</p>
+<p><code>naught deploy</code></p>
+<p>And you can check all the server's logs by looking at the <code>stdout.log</code> file</p>
+<p>In a separate terminal, once the server is up and running, we can start sending requests to it with the <code>requestScript.js</code> file. A command line argument can be given to control the frequency at which requests will be sent to the server in milliseconds.</p>
+<p>Like this:<br><code>node requestScript.js 4</code></p>
+<p>The final requirement is the trickiest. This setup should be able to simulate a network latency, where the request takes a while to get from the client to the server. This can be achieved in a OS X environment <strong>with network packet filters and dummy net traffic shapers</strong>. These tools can be used to tweak the network packets going through the local network on your machine and doing things like adding a delay to them. The following commands will do just that:</p>
+<pre><code><span class="tok-c">### Add delay in OS X (500ms to each packet)</span>
+sudo pfctl -E
+sudo dnctl pipe 1 config bw 10Mbit/s delay 500 plr 0
+echo "dummynet out proto tcp from any to localhost pipe 1" | sudo pfctl -f -
+ 
+<span class="tok-c">### Remove</span>
+sudo pfctl -F dummy
+sudo dnctl -q flush
+sudo pfctl -d
+ 
+<span class="tok-c">### List</span>
+sudo pfctl -sa
+sudo dnctl list</code></pre>
+
+<p><em>Note: the 500ms are applied to <strong>each network packet</strong>, so the resulting delay per actual request will be bigger. These commands won't work on Linux; Another set of tools have to be used but there is plenty of info on that on the web. I just haven't tested any so I can't recommend one.</em></p>
+<p><em>Note 2: If you want to go up to 250 requests per second, you'll have to reduce the delay. Otherwise, you start to get some random connection errors on the client side with this setup.</em></p>
+<p>With all this setup we have all the tools to test graceful shutdown implementations and see if they meet our requirements.</p>
+<h2>Testing out implementations: Results</h2>
+<p>Sadly, after testing we were disappointed to find that none of the most popular <strong>npm </strong>packages used for graceful shutdown were able to meet all of our requirements. 😞</p>
+<p>The packages we tested had the following issues:</p>
+<ul>
+<li>Some packages were not compatible with NodeJS Clusters. They worked reasonably fine if ran directly but would generate errors when starting the shutdown process if ran under <strong>Naught</strong>.</li>
+<li>Some packages generated errors on the client side under high loads between 200 and 300 requests per second.</li>
+<li>The packages that were able to handle high load would still generate a lot of errors when network latency was introduced.</li>
+<li>Some packages would include features that we didn't really want, like handling of signals</li></ul>
+<p>Some of these packages would still be an improvement on our current way to handle the shutdown of servers. However, seeing that all of them had one or more issues we decided to dig in deeper. After reviewing the code used in different approaches to solve this issue, we decided to come up with our own solution that would match our specific needs.</p>
+<p><em>Note: We chose to not to explicitly mention the different <strong>npm</strong> packages that we tested. The point of this article is not to criticize the result of the work people have done for free to handle this issue. Any problems found will be shared directly with the maintainers of the packages directly.</em></p>
+<h2>Coming Up With Our Solution</h2>
+<p>The problem of graceful shutdown of an HTTP server in NodeJS can be divided into 3 things that we need to do:</p>
+<p><strong>Stop accepting new connections:</strong> This is already handled for us by <strong>Naught</strong> and calling <code>server.close()</code>. As soon as a new worker running our server is available, <strong>Naught</strong> will stop sending new connections to the old server and send them to the new one instead.</p>
+<figure><img src="redirect-connections.png" width="580" height="467" loading="lazy" alt="Sequence diagram: Naught starts a new server, the new server reports ready, and new client connections are passed to the new server instead of the old one."></figure>
+
+<p><strong>Finish handling ongoing requests:</strong> Whenever we decide to stop the old server, there could be a number of requests that have already reached the server and that are currently being handled. With a rate of 200-300 requests per second this is almost a certainty. A graceful shutdown implementation <strong>must </strong>wait for all of these requests to complete before actually shutting off the server or closing the connections.</p>
+<figure><img src="ongoing-request.png" width="710" height="703" loading="lazy" alt="Sequence diagram: a client request is already being handled by the old server when graceful shutdown starts; the old server must not shut down until the response has been sent."></figure>
+
+<p><strong>Close all "keep-alive" connections without generating errors on the client side: </strong>As explained earlier, when <code>server.close()</code> is called, all connections that were open will not be closed. They must be tracked and closed manually. Additionally, they need to be closed in a way that doesn't come as a surprise to the clients. This means that we shouldn't close a connection if a request is being handled on that connection or if a request has already left the client and the connection would be closed before it reaches the server. It also means that we must communicate to the client that the connection will close, so that it knows that it shouldn't send any new requests on that connection.</p>
+<figure><img src="keep-alive-connections.png" width="696" height="981" loading="lazy" alt="Sequence diagram: a client reuses a keep-alive connection to the old server; after shutdown starts, the response tells the client the connection will be closed, so the client opens a new connection that Naught passes to the new server."></figure>
+
+<p>As explained, point 1 is already handled so we don't need to deal with it.</p>
+<p><strong>Solving points 2 and 3</strong> will require keeping track of all incoming connections and requests, we can't avoid the overhead of this. We should be able to know at any point whether there are any open connections and how many, if any, requests are using each connection. Given that we'll have to <strong>track all connections and requests</strong>, the code involved must be lightweight and efficient so that the performance hit to our request handling is kept as low as possible. With this information we can know whether there is an ongoing request on any connection and wait for it to complete.</p>
+<p>Finally, to solve the issue of letting clients know that the server wanted to close the connection we started looking around at other implementations and see how other people were doing it. A common "trick" we found was using a <code>Connection</code> header in the response to tell the client that the server would like to close the connection. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection">Looking at the MDN docs about it</a>, it turns out that sending <code>Connection: close</code> in the response headers does exactly that. If we keep track of every request en each connection, we can add this header to the last request being handled and close the connection once the response has reached the client (or at least left the server). If the header hasn't been sent for a specific connection we'll keep it open to wait for a new request on it and send back the header.</p>
+<p>Finally, we also decided to make a tradeoff. If after an arbitrary amount of time the server still has some open connections we just close them anyway. This might happen if a client keeps a connection open but doesn't send any new requests on it. This would be similar to how servers (or load-balancers) usually have some kind of timeout setting for keep-alive connections. This could generate some kind of error on the clients, but we don't want to keep the old server up indefinitely.</p>
+<p>With all this, we have everything that we need for our implementation of graceful shutdown</p>
+<h2>Show Me The Code</h2>
+<p>The solution we came up with is next. It has a lot of comments and explanations to try to explain why everything is done.</p>
+<pre><code><span class="tok-c">/**
+ * Copyright 2020 Dashlane
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ * Helper function to allow better handling of keep-alive connections for
+ * graceful termination of a server. Calling `server.close()` will stop the server
+ * from accepting new connections, but existing keep-alive aren't closed nor handled
+ * in any special way by default. https://github.com/nodejs/node/issues/2642 shows
+ * that this can keep a server for being shutdown cleanly after serving ongoing requests.
+ *
+ * This function will keep track of all opened connections and ongoing requests.
+ *
+ * The main idea is trying to serve all ongoing requests before shutting down the
+ * server while trying to minimize the "socket hangup" or "connection reset"
+ * errors on clients.
+ *
+ * Once the server starts being terminated, the server will reply with
+ * Connection: close headers to signal clients not to send requests on existing
+ * connections because they will be closed. This is done to minimize the chance
+ * of closing a connection while there is an in-flight request to the server.
+ *
+ * All connections for which a Connection: close response has been sent, will be
+ * terminated after handling the last request.
+ *
+ * After a timeout, all idle connections with no ongoing requests will be closed,
+ * even if they haven't received the Connection: close header.
+ *
+ * After a bigger timeout, if some connections are still keeping the server
+ * open, all connections will be forced closed and ongoing requests will not
+ * send a response.
+ */</span>
+<span class="tok-k">const</span> serverStoppingHelper = server =&gt; {
+  <span class="tok-c">// If the server needs to be stopped and it seems to be having trouble keeping up with pending requests</span>
+  <span class="tok-c">// we should just force the closing of the connections</span>
+  <span class="tok-k">const</span> forcedStopTimeout = <span class="tok-n">30000</span>
+ 
+  <span class="tok-c">// In cases a client is sending no more requests, we won't have the opportunity to send Connection: close back</span>
+  <span class="tok-c">// In these cases we should just end the connection as it has become idle.</span>
+  <span class="tok-c">// Note that this could be achieved internally with server.keepAliveTimeout but</span>
+  <span class="tok-c">// the normal runtime value might be different for what we'd like here</span>
+  <span class="tok-k">const</span> timeoutToTryEndIdle = <span class="tok-n">15000</span>
+ 
+  <span class="tok-c">// We need to keep track of requests per connection so that we can detect when we have responded</span>
+  <span class="tok-c">// to a request in a keep-alive connection. This is the only way in node that we can close a</span>
+  <span class="tok-c">// keep-alive connection after handling requests.</span>
+  <span class="tok-k">const</span> reqCountPerSocket = <span class="tok-k">new</span> <span class="tok-f">Map</span>()
+ 
+  <span class="tok-c">// To minimize the chances of closing a connection while there is a request in-flight from the client</span>
+  <span class="tok-c">// we respond with a Connection: close header once the server starts being terminated. We'll only</span>
+  <span class="tok-c">// immediately close connections where we have responded this header. For others, we'll only</span>
+  <span class="tok-c">// close them if they're still open after "timeoutToTryEndIdle"</span>
+  <span class="tok-c">// This won't help against clients that don't respect the Connection: close header</span>
+  <span class="tok-k">const</span> hasRepliedClosedConnectionForSocket = <span class="tok-k">new</span> <span class="tok-f">WeakMap</span>()
+  <span class="tok-k">let</span> terminating = <span class="tok-k">false</span>
+ 
+  <span class="tok-k">const</span> trackConnections = socket =&gt; {
+    reqCountPerSocket.<span class="tok-f">set</span>(socket, <span class="tok-n">0</span>)
+    socket.<span class="tok-f">once</span>(<span class="tok-s">'close'</span>, () =&gt; {
+      reqCountPerSocket.<span class="tok-f">delete</span>(socket)
+    })
+  }
+ 
+  <span class="tok-k">const</span> checkAndCloseConnection = req =&gt; {
+    <span class="tok-k">const</span> socketPendingRequests = reqCountPerSocket.<span class="tok-f">get</span>(req.socket) - <span class="tok-n">1</span>
+    <span class="tok-k">const</span> hasSuggestedClosingConnection = hasRepliedClosedConnectionForSocket.<span class="tok-f">get</span>(
+      req.socket,
+    )
+ 
+    reqCountPerSocket.<span class="tok-f">set</span>(req.socket, socketPendingRequests)
+    <span class="tok-k">if</span> (
+      terminating &amp;&amp;
+      socketPendingRequests === <span class="tok-n">0</span> &amp;&amp;
+      hasSuggestedClosingConnection
+    ) {
+      req.socket.<span class="tok-f">end</span>()
+    }
+  }
+ 
+  <span class="tok-k">const</span> trackRequests = (req, res) =&gt; {
+    <span class="tok-k">const</span> currentCount = reqCountPerSocket.<span class="tok-f">get</span>(req.socket)
+    reqCountPerSocket.<span class="tok-f">set</span>(req.socket, currentCount + <span class="tok-n">1</span>)
+ 
+    <span class="tok-k">if</span> (terminating &amp;&amp; !res.headersSent) {
+      res.<span class="tok-f">setHeader</span>(<span class="tok-s">'connection'</span>, <span class="tok-s">'close'</span>)
+      hasRepliedClosedConnectionForSocket.<span class="tok-f">set</span>(req.socket, <span class="tok-k">true</span>)
+    }
+ 
+    res.<span class="tok-f">on</span>(<span class="tok-s">'finish'</span>, () =&gt; <span class="tok-f">checkAndCloseConnection</span>(req))
+  }
+ 
+  <span class="tok-k">const</span> endAllConnections = ({ force }) =&gt; {
+    <span class="tok-k">for</span> (<span class="tok-k">const</span> [socket, reqCount] <span class="tok-k">of</span> reqCountPerSocket) {
+      <span class="tok-k">if</span> (force || reqCount === <span class="tok-n">0</span>) {
+        socket.<span class="tok-f">end</span>()
+      }
+    }
+  }
+ 
+  server.<span class="tok-f">on</span>(<span class="tok-s">'connection'</span>, trackConnections)
+  server.<span class="tok-f">on</span>(<span class="tok-s">'request'</span>, trackRequests)
+ 
+  <span class="tok-k">const</span> stoppingFunction = cb =&gt; {
+    terminating = <span class="tok-k">true</span>
+    <span class="tok-c">// cb won't be called as long as there are open connections</span>
+    <span class="tok-c">// So here we're "implicitly" also waiting for the callbacks</span>
+    <span class="tok-c">// that will close idle connections or force close all connections</span>
+    <span class="tok-c">// after a delay</span>
+    server.<span class="tok-f">close</span>(cb)
+ 
+    <span class="tok-k">if</span> (timeoutToTryEndIdle &lt; forcedStopTimeout) {
+      <span class="tok-f">setTimeout</span>(() =&gt; <span class="tok-f">endAllConnections</span>({ force: <span class="tok-k">false</span> }), timeoutToTryEndIdle)
+    }
+    <span class="tok-f">setTimeout</span>(() =&gt; <span class="tok-f">endAllConnections</span>({ force: <span class="tok-k">true</span> }), forcedStopTimeout)
+  }
+ 
+  <span class="tok-k">return</span> stoppingFunction
+}
+ 
+<span class="tok-k">const</span> getServerStopFunc = server =&gt; {
+  <span class="tok-k">const</span> serverStopperFunc = <span class="tok-f">serverStoppingHelper</span>(server)
+ 
+  <span class="tok-k">return</span> () =&gt;
+    <span class="tok-k">new</span> <span class="tok-f">Promise</span>((resolve, reject) =&gt; {
+      <span class="tok-f">serverStopperFunc</span>(error =&gt; {
+        <span class="tok-k">if</span> (error) {
+          <span class="tok-k">return</span> <span class="tok-f">reject</span>(error)
+        }
+ 
+        <span class="tok-k">return</span> <span class="tok-f">resolve</span>()
+      })
+    })
+}
+ 
+<span class="tok-k">module</span>.<span class="tok-k">exports</span> = {
+  getServerStopFunc,
+}</code></pre>
+
+<h2>Success 🎉</h2>
+<p>We tested this implementation in the testing setup described above and it performed better than all the other <strong>npm</strong> packages we tried.</p>
+<p>We then tested this in production and poof! <strong>The 600 errors spike on each deploy was gone</strong>. This allows us to deploy our code even more confidently and with the knowledge that we're not causing any headaches to either users or other Dashlane developers.</p>
+<p>We are pretty happy with this result.</p>
+<p><strong>However,</strong> it is worth mentioning that there are some <strong>important caveats</strong> to this implementation:</p>
+<ul>
+<li>This implementation only works if the clients respect the <code>Connection: close</code> header. Most client implementation will do so, but if they don't there is not much we can do about it.</li>
+<li>This solution is only for HTTP servers, HTTPS might behave slightly differently. This means that you should only use this solution in a configuration where your clients are being served through HTTPS at some other point in the network. For example, in our case the servers are behind a load balancer that handles HTTPS connections with clients and the servers cannot be directly accessed from the outside the internal network.</li>
+<li>This solution only applies for the HTTP 1 protocol, which is used by NodeJS's HTTP server. The HTTP2 protocol (used only by NodeJS http2 module) does not allow <code>Connection: keep-alive</code> or <code>Connection: close</code> headers. In HTTP2, persistent connections are the default and closing connections with clients is <a href="https://stackoverflow.com/a/42640503/8364541">done differently</a>.</li>
+<li>Test if this implementation works for you first. As shown by the methodology used here, you should not just blindly pick this code. For example, we consciously decided to close all connections abruptly after some delay which might not be something that should be done in some other context.</li></ul>
+<h2>Some Closing Words</h2>
+<p>If you got all the way down here, congrats! 🎉🎉 (And also my sympathy: you clearly are trying to solve the same problem.)</p>
+<p>If you have any comments or questions, don't hesitate to leave a comment or reach out to me <a href="https://twitter.com/jmarroyo">@jmarroyo90</a>. I'll be glad to help.</p>
+
+</article>
+</main>
+<footer class="site-footer">
+  <p>© 2026 José Arroyo · <a href="/feed.xml">RSS</a> · <a href="https://github.com/jomi-se/jomi-se-blog">Source</a></p>
+</footer>
+</body>
+</html>
